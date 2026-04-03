@@ -12,27 +12,26 @@ load_dotenv()
 
 class Config:
 
-"""Base configuration class."""
+    """Base configuration class."""
 
-SECRET_KEY = os.environ.get('SECRET_KEY') or
-'your-secret-key-here-change-in-production'
+    SECRET_KEY = os.environ.get('SECRET_KEY') 
 
-# Oracle Database Configuration
+    # Oracle Database Configuration
 
-ORACLE_USER = os.environ.get('ORACLE_USER', 'hostel_admin')
+    ORACLE_USER = os.environ.get('ORACLE_USER', 'hostel_admin')
 
-ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'password')
+    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'password')
 
-ORACLE_DSN = os.environ.get('ORACLE_DSN', 'localhost:1521/XEPDB1')
+    ORACLE_DSN = os.environ.get('ORACLE_DSN', 'localhost:1521/XEPDB1')
 
-# Application Settings
+    # Application Settings
 
-ITEMS_PER_PAGE = 10
+    ITEMS_PER_PAGE = 10
 
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16MB max file upload
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024 # 16MB max file upload
 
-# Session Configuration
+    # Session Configuration
 
-SESSION_TYPE = 'filesystem'
+    SESSION_TYPE = 'filesystem'
 
-PERMANENT_SESSION_LIFETIME = 3600 # 1 hour
+    PERMANENT_SESSION_LIFETIME = 3600 # 1 hour

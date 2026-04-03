@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — HMS Portal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="auth-page">
+
+  <!-- Left decorative panel -->
+  <div class="auth-panel">
+    <div class="auth-panel-content">
+      <div class="logo-icon">🏠</div>
+      <h1>Hostel Management System</h1>
+      <p>A unified portal for students, wardens, and administrators to manage hostel life seamlessly.</p>
+
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i class="fas fa-door-open"></i></div>
+          Room allocation & tracking
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i class="fas fa-exclamation-circle"></i></div>
+          Complaint management
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i class="fas fa-calendar-check"></i></div>
+          Leave request approvals
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i class="fas fa-users"></i></div>
+          Roommate compatibility matching
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon"><i class="fas fa-chart-bar"></i></div>
+          Analytics & reports
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-box fade-in">
+
+      <h2>Welcome back</h2>
+      <p class="auth-subtitle">Sign in to your HMS account</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+              <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' if category == 'danger' else 'info-circle' }}"></i>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <div class="form-group">
+          <label class="form-label">Username or Email</label>
+          <input type="text" name="username" class="form-control" placeholder="Enter your username or email" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="display:flex; justify-content:space-between;">
+            Password
+            <a href="{{ url_for('auth.forgot_password') }}" style="font-weight:400; color:var(--text-muted); font-size:0.78rem;">Forgot password?</a>
+          </label>
+          <div style="position:relative;">
+            <input type="password" name="password" id="passwordField" class="form-control" placeholder="Enter your password" required style="padding-right: 2.5rem;">
+            <button type="button" onclick="togglePassword()" style="position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:0.85rem; padding:0;">
+              <i class="fas fa-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+          <input type="checkbox" name="remember" id="remember" style="width:16px; height:16px; cursor:pointer;">
+          <label for="remember" style="font-size:0.82rem; color:var(--text-muted); cursor:pointer; margin:0;">Keep me signed in</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full" style="justify-content:center; padding: 0.7rem;">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+        </button>
+      </form>
+
+      <div class="auth-divider">or</div>
+
+      <p style="text-align:center; font-size:0.875rem; color:var(--text-muted);">
+        New student?
+        <a href="{{ url_for('auth.register') }}" style="color:var(--primary); font-weight:600;">Create an account</a>
+      </p>
+
+      <div style="margin-top: 2rem; padding: 1rem; background: var(--accent-light); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+        <p style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); text-align:center; margin:0;">
+          Demo: admin / warden_a / student001 &nbsp;|&nbsp; Password: password123
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function togglePassword() {
+  const field = document.getElementById('passwordField');
+  const icon = document.getElementById('eyeIcon');
+  if (field.type === 'password') {
+    field.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    field.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+</script>
+</body>
+</html>

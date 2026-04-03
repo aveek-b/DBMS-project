@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Warden Dashboard — HMS Portal{% endblock %}
+{% block page_title %}Warden Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>{{ warden.block_name or 'Your Block' }}</h1>
+      <p>Welcome back, {{ current_user.first_name }}. Here's your block overview.</p>
+    </div>
+    <span class="badge badge-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem;">
+      <i class="fas fa-user-shield"></i> Warden
+    </span>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card primary">
+    <div class="stat-label">Total Students</div>
+    <div class="stat-value">{{ dashboard.total_students or 0 }}</div>
+    <div class="stat-sub">Currently allocated</div>
+    <div class="stat-icon"><i class="fas fa-users"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Occupancy</div>
+    <div class="stat-value">{{ dashboard.current_occupancy or 0 }}<span style="font-size:1rem; color:var(--text-muted);">/{{ dashboard.total_capacity or 0 }}</span></div>
+    <div class="stat-sub">Beds occupied</div>
+    <div class="stat-icon"><i class="fas fa-bed"></i></div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-label">Pending Complaints</div>
+    <div class="stat-value">{{ dashboard.pending_complaints or 0 }}</div>
+    <div class="stat-sub">Awaiting action</div>
+    <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+  </div>
+  <div class="stat-card danger">
+    <div class="stat-label">Pending Leaves</div>
+    <div class="stat-value">{{ dashboard.pending_leaves or 0 }}</div>
+    <div class="stat-sub">Awaiting approval</div>
+    <div class="stat-icon"><i class="fas fa-calendar-times"></i></div>
+  </div>
+</div>
+
+{% if dashboard %}
+<!-- Occupancy Bar -->
+<div class="card mb-3">
+  <div class="card-body" style="padding: 1.25rem 1.5rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+      <span style="font-size:0.82rem; font-weight:600; color:var(--text);">Block Occupancy</span>
+      <span style="font-family:var(--font-mono); font-size:0.82rem; color:var(--text-muted);">
+        {{ dashboard.current_occupancy or 0 }} / {{ dashboard.total_capacity or 1 }} beds
+        ({{ "%.1f"|format(((dashboard.current_occupancy or 0) / (dashboard.total_capacity or 1)) * 100) }}%)
+      </span>
+    </div>
+    {% set pct = ((dashboard.current_occupancy or 0) / (dashboard.total_capacity or 1)) * 100 %}
+    <div class="occ-bar" style="height:10px;">
+      <div class="occ-fill {{ 'high' if pct > 85 else 'medium' if pct > 60 else '' }}"
+           style="width:{{ pct }}%;"></div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-2">
+
+  <!-- Recent Complaints -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-exclamation-circle" style="color:var(--warning); margin-right:0.5rem;"></i>Pending Complaints</span>
+      <a href="{{ url_for('warden.complaints') }}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="table-wrap">
+      {% if recent_complaints %}
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Subject</th>
+            <th>Priority</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in recent_complaints %}
+          <tr>
+            <td>
+              <div style="font-weight:500;">{{ c.first_name }} {{ c.last_name }}</div>
+              <div style="font-size:0.72rem; color:var(--text-muted);">{{ c.roll_number }}</div>
+            </td>
+            <td>
+              <div style="font-size:0.875rem;">{{ c.subject[:40] }}{% if c.subject|length > 40 %}…{% endif %}</div>
+              <div style="font-size:0.72rem; color:var(--text-muted);">Room {{ c.room_number }}</div>
+            </td>
+            <td>
+              <span class="badge badge-{{ 'danger' if c.priority == 'CRITICAL' else 'warning' if c.priority == 'HIGH' else 'info' if c.priority == 'MEDIUM' else 'muted' }}">
+                {{ c.priority | title }}
+              </span>
+            </td>
+            <td>
+              <a href="{{ url_for('warden.complaints') }}" class="btn btn-outline btn-sm">Manage</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-check-circle" style="color:var(--success);"></i></div>
+        <h3>No Pending Complaints</h3>
+        <p>All complaints are resolved.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Pending Leave Requests -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-calendar-check" style="color:var(--primary); margin-right:0.5rem;"></i>Pending Leaves</span>
+      <a href="{{ url_for('warden.leave_requests') }}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="table-wrap">
+      {% if pending_leaves %}
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Type</th>
+            <th>Dates</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for lr in pending_leaves %}
+          <tr>
+            <td>
+              <div style="font-weight:500;">{{ lr.first_name }} {{ lr.last_name }}</div>
+              <div style="font-size:0.72rem; color:var(--text-muted);">{{ lr.roll_number }}</div>
+            </td>
+            <td>
+              <span class="badge badge-primary">{{ lr.leave_type | replace('_', ' ') | title }}</span>
+            </td>
+            <td style="font-family:var(--font-mono); font-size:0.78rem;">
+              {{ lr.from_date.strftime('%d %b') if lr.from_date else '' }} →
+              {{ lr.to_date.strftime('%d %b') if lr.to_date else '' }}
+            </td>
+            <td>
+              <div style="display:flex; gap:0.4rem;">
+                <form method="POST" action="{{ url_for('warden.process_leave', leave_id=lr.leave_id) }}" style="display:inline;">
+                  <input type="hidden" name="action" value="APPROVE">
+                  <button type="submit" class="btn btn-success btn-sm">✓</button>
+                </form>
+                <button class="btn btn-danger btn-sm" onclick="openReject({{ lr.leave_id }})">✗</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-calendar-check" style="color:var(--success);"></i></div>
+        <h3>No Pending Leaves</h3>
+        <p>All leave requests are processed.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Reject Leave Request</span>
+      <button class="modal-close" onclick="closeReject()">✕</button>
+    </div>
+    <form method="POST" id="rejectForm">
+      <div class="modal-body">
+        <input type="hidden" name="action" value="REJECT">
+        <div class="form-group">
+          <label class="form-label">Reason for Rejection <span style="color:var(--danger);">*</span></label>
+          <textarea name="rejection_reason" class="form-control" rows="3" placeholder="Provide a reason..." required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeReject()">Cancel</button>
+        <button type="submit" class="btn btn-danger">Reject Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openReject(leaveId) {
+  document.getElementById('rejectForm').action = `/warden/leave/${leaveId}/process`;
+  document.getElementById('rejectModal').classList.add('active');
+}
+function closeReject() {
+  document.getElementById('rejectModal').classList.remove('active');
+}
+document.getElementById('rejectModal').addEventListener('click', function(e) {
+  if (e.target === this) closeReject();
+});
+</script>
+{% endblock %}

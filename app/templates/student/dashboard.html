@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — HMS Portal{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Good {{ time_of_day }}, {{ current_user.first_name }} 👋</h1>
+  <p>Here's what's happening with your hostel account today.</p>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card {{ 'danger' if dashboard and dashboard.pending_fines > 0 else '' }}">
+    <div class="stat-label">Pending Fines</div>
+    <div class="stat-value">₹{{ "%.0f"|format(dashboard.pending_fines or 0) }}</div>
+    <div class="stat-sub">{{ 'Amount due' if dashboard and dashboard.pending_fines > 0 else 'All clear!' }}</div>
+    <div class="stat-icon"><i class="fas fa-receipt"></i></div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-label">Open Complaints</div>
+    <div class="stat-value">{{ dashboard.pending_complaints or 0 }}</div>
+    <div class="stat-sub">Pending resolution</div>
+    <div class="stat-icon"><i class="fas fa-exclamation-circle"></i></div>
+  </div>
+  <div class="stat-card primary">
+    <div class="stat-label">Leave Requests</div>
+    <div class="stat-value">{{ dashboard.pending_leaves or 0 }}</div>
+    <div class="stat-sub">Awaiting approval</div>
+    <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Notifications</div>
+    <div class="stat-value">{{ dashboard.unread_notifications or 0 }}</div>
+    <div class="stat-sub">Unread messages</div>
+    <div class="stat-icon"><i class="fas fa-bell"></i></div>
+  </div>
+</div>
+
+<div class="grid-2">
+
+  <!-- Room Info -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-door-open" style="color:var(--accent); margin-right:0.5rem;"></i>My Room</span>
+      <a href="{{ url_for('student.room_details') }}" class="btn btn-outline btn-sm">View Details</a>
+    </div>
+    <div class="card-body">
+      {% if student and student.room_id %}
+      <div style="display:flex; align-items:center; gap:1.5rem; margin-bottom:1.25rem;">
+        <div>
+          <div style="font-family:var(--font-display); font-size:2.5rem; font-weight:700; color:var(--text); line-height:1;">
+            {{ student.room_number }}
+          </div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">{{ student.block_name }}</div>
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <span class="badge badge-primary">{{ student.room_type | title }}</span>
+            <span class="badge badge-muted">Floor {{ student.floor_number }}</span>
+            <span class="badge badge-success">Allocated</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <div style="background:var(--bg); border-radius:var(--radius-sm); padding:0.75rem;">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.25rem;">Block Type</div>
+          <div style="font-weight:600; font-size:0.875rem;">{{ student.block_type | title }}</div>
+        </div>
+        <div style="background:var(--bg); border-radius:var(--radius-sm); padding:0.75rem;">
+          <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.25rem;">Status</div>
+          <div style="font-weight:600; font-size:0.875rem; color:var(--success);">{{ student.hostel_status | title }}</div>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-door-closed"></i></div>
+        <h3>No Room Assigned</h3>
+        <p>You haven't been allocated a room yet. Contact the warden for assistance.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Today's Mess Menu -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-utensils" style="color:var(--accent); margin-right:0.5rem;"></i>Today's Menu</span>
+      <a href="{{ url_for('student.mess_menu') }}" class="btn btn-outline btn-sm">Full Week</a>
+    </div>
+    <div class="card-body">
+      {% if todays_menu %}
+        {% for meal in todays_menu %}
+        <div class="meal-section">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="meal-type">{{ meal.meal_type | title }}</div>
+            <div class="meal-time">{{ meal.timing_start }} – {{ meal.timing_end }}</div>
+          </div>
+          <div class="meal-items">{{ meal.menu_items }}</div>
+        </div>
+        {% if not loop.last %}<hr style="border:none; border-top:1px solid var(--border-light); margin:0.75rem 0;">{% endif %}
+        {% endfor %}
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-utensils"></i></div>
+        <h3>No Menu Today</h3>
+        <p>Menu hasn't been updated yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<div class="grid-2 mt-3">
+
+  <!-- Announcements -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-bullhorn" style="color:var(--accent); margin-right:0.5rem;"></i>Announcements</span>
+    </div>
+    <div class="card-body">
+      {% if announcements %}
+        {% for a in announcements[:4] %}
+        <div class="announcement-item {{ 'pinned' if a.is_pinned == 'Y' else 'urgent' if a.announcement_type == 'URGENT' else '' }}">
+          <div class="announcement-title">
+            {% if a.is_pinned == 'Y' %}<i class="fas fa-thumbtack" style="font-size:0.7rem; margin-right:0.3rem;"></i>{% endif %}
+            {{ a.title }}
+          </div>
+          <div class="announcement-meta">
+            {{ a.announcement_type | title }} &bull; {{ a.start_date.strftime('%d %b %Y') if a.start_date else '' }}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-bullhorn"></i></div>
+        <h3>No Announcements</h3>
+        <p>You're all caught up!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-bolt" style="color:var(--accent); margin-right:0.5rem;"></i>Quick Actions</span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+        <a href="{{ url_for('student.complaints') }}" class="btn btn-outline" style="flex-direction:column; gap:0.4rem; padding:1rem; height:auto; text-align:center; justify-content:center;">
+          <i class="fas fa-exclamation-circle" style="font-size:1.3rem; color:var(--warning);"></i>
+          <span style="font-size:0.78rem;">New Complaint</span>
+        </a>
+        <a href="{{ url_for('student.leave_request') }}" class="btn btn-outline" style="flex-direction:column; gap:0.4rem; padding:1rem; height:auto; text-align:center; justify-content:center;">
+          <i class="fas fa-calendar-plus" style="font-size:1.3rem; color:var(--primary);"></i>
+          <span style="font-size:0.78rem;">Apply for Leave</span>
+        </a>
+        <a href="{{ url_for('student.housekeeping') }}" class="btn btn-outline" style="flex-direction:column; gap:0.4rem; padding:1rem; height:auto; text-align:center; justify-content:center;">
+          <i class="fas fa-broom" style="font-size:1.3rem; color:var(--success);"></i>
+          <span style="font-size:0.78rem;">Housekeeping</span>
+        </a>
+        <a href="{{ url_for('student.roommate_matches') }}" class="btn btn-outline" style="flex-direction:column; gap:0.4rem; padding:1rem; height:auto; text-align:center; justify-content:center;">
+          <i class="fas fa-users" style="font-size:1.3rem; color:var(--accent-dark);"></i>
+          <span style="font-size:0.78rem;">Find Roommates</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Time of day greeting
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+  document.querySelectorAll('h1').forEach(el => {
+    el.textContent = el.textContent.replace('{{ time_of_day }}', greet);
+  });
+</script>
+{% endblock %}
