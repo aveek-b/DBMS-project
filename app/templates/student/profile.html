@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<h2>{{ student.first_name }} {{ student.last_name }}</h2>
+<p>Email: {{ student.email }}</p>
+<p>Roll No: {{ student.roll_number }}</p>
+{% endblock %}

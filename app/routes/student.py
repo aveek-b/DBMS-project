@@ -180,3 +180,142 @@ def fines():
         fines=fines_list,
         current_status=status_filter
     )
+
+@student_bp.route('/leave-requests')
+@login_required
+@student_required
+
+def leave_requests():
+    student = get_student_by_user_id(current_user.user_id)
+
+    if request.method == 'POST':
+        leave_type = request.form.get('leave_type')
+        from_date = request.form.get('from_date')
+        to_date = request.form.get('to_date')
+        reason = request.form.get('reason')
+
+        if not all([leave_type, from_date, to_date, reason]):
+            flash('All fields are required.', 'danger')
+            return redirect(url_for('student.leave_requests'))
+
+        try:
+            create_leave_request(
+                student['student_id'],
+                leave_type,
+                from_date,
+                to_date,
+                reason
+            )
+            flash('Leave request submitted successfully!', 'success')
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+
+        return redirect(url_for('student.leave_requests'))
+
+    status_filter = request.args.get('status')
+
+    leave_list = get_student_leave_requests(
+        student['student_id'],
+        status_filter
+    )
+
+    return render_template(
+        'student/leave_requests.html',
+        leave_requests=leave_list,
+        current_status=status_filter
+    )
+
+@student_bp.route('/mess-menu')
+@login_required
+@student_required
+def mess_menu():
+    day = request.args.get('day')
+    menu = get_mess_menu(day_of_week=day)
+
+    return render_template(
+        'student/mess_menu.html',
+        menu=menu,
+        selected_day=day
+    )
+
+@student_bp.route('/compatibility-quiz', methods=['GET', 'POST'])
+@login_required
+@student_required
+def compatibility_quiz():
+    student = get_student_by_user_id(current_user.user_id)
+
+    if request.method == 'POST':
+        try:
+            for key, value in request.form.items():
+                if key.startswith('question_'):
+                    question_id = int(key.split('_')[1])
+
+                    execute_dml("""
+                        MERGE INTO compatibility_responses cr
+                        USING dual
+                        ON (cr.student_id = :student_id AND cr.question_id = :question_id)
+                        WHEN MATCHED THEN
+                            UPDATE SET answer = :answer
+                        WHEN NOT MATCHED THEN
+                            INSERT (student_id, question_id, answer)
+                            VALUES (:student_id, :question_id, :answer)
+                    """, {
+                        'student_id': student['student_id'],
+                        'question_id': question_id,
+                        'answer': value
+                    })
+
+            flash('Responses saved successfully!', 'success')
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+
+        return redirect(url_for('student.compatibility_quiz'))
+
+    questions = get_compatibility_questions()
+    responses = get_student_compatibility_responses(student['student_id'])
+
+    return render_template(
+        'student/compatibility_quiz.html',
+        questions=questions,
+        responses=responses
+    )
+
+@student_bp.route('/roommate-matches')
+@login_required
+@student_required
+def roommate_matches():
+    student = get_student_by_user_id(current_user.user_id)
+
+    matches = get_best_roommate_matches(student['student_id'])
+
+    # Add compatibility details (optional enhancement)
+    detailed_matches = []
+    for m in matches:
+        score = m.get('compatibility_score', 0)
+        detailed_matches.append({
+            **m,
+            'category': get_compatibility_category(score)
+        })
+
+    return render_template(
+        'student/roommate_matches.html',
+        matches=detailed_matches
+    )
+
+@student_bp.route('/housekeeping')
+@login_required
+@student_required
+def housekeeping():
+    student = get_student_by_user_id(current_user.user_id)
+    status_filter = request.args.get('status')
+
+    requests_list = get_student_housekeeping_requests(
+        student['student_id'],
+        status_filter
+    )
+
+    return render_template(
+        'student/housekeeping.html',
+        requests=requests_list,
+        current_status=status_filter
+    )

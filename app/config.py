@@ -18,11 +18,11 @@ class Config:
 
     # Oracle Database Configuration
 
-    ORACLE_USER = os.environ.get('ORACLE_USER', 'hostel_admin')
+    ORACLE_USER = os.environ.get('DB_USER', 'hostel_admin')
 
-    ORACLE_PASSWORD = os.environ.get('ORACLE_PASSWORD', 'password')
+    ORACLE_PASSWORD = os.environ.get('DB_PASSWORD', 'password')
 
-    ORACLE_DSN = os.environ.get('ORACLE_DSN', 'localhost:1521/XEPDB1')
+    ORACLE_DSN = os.environ.get('DB_DSN', 'localhost:1521/XEPDB1')
 
     # Application Settings
 
