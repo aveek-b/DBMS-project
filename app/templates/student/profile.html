@@ -1,10 +1,134 @@
 {% extends "base.html" %}
-
-{% block title %}Profile{% endblock %}
+{% block title %}My Profile — HMS Portal{% endblock %}
 {% block page_title %}My Profile{% endblock %}
 
 {% block content %}
-<h2>{{ student.first_name }} {{ student.last_name }}</h2>
-<p>Email: {{ student.email }}</p>
-<p>Roll No: {{ student.roll_number }}</p>
+<div class="page-header">
+  <h1>My Profile</h1>
+  <p>Your personal and academic details on record.</p>
+</div>
+
+<div class="grid-2">
+
+  <!-- Profile Card -->
+  <div class="card">
+    <div class="card-body" style="text-align:center; padding: 2rem;">
+      <div style="width:80px; height:80px; border-radius:50%; background:var(--primary); display:inline-flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:2rem; font-weight:700; color:#fff; margin-bottom:1rem;">
+        {{ student.first_name[0] }}{{ (student.last_name or '?')[0] }}
+      </div>
+      <h2 style="font-family:var(--font-display); font-size:1.4rem; font-weight:700; margin-bottom:0.25rem;">
+        {{ student.first_name }} {{ student.last_name or '' }}
+      </h2>
+      <p style="color:var(--text-muted); font-size:0.875rem; margin-bottom:1rem;">{{ student.email }}</p>
+      <div style="display:flex; justify-content:center; gap:0.5rem; flex-wrap:wrap;">
+        <span class="badge badge-primary">{{ student.course }}</span>
+        <span class="badge badge-accent">{{ student.branch }}</span>
+        <span class="badge badge-{{ 'success' if student.hostel_status == 'ALLOCATED' else 'warning' if student.hostel_status == 'PENDING' else 'muted' }}">
+          {{ student.hostel_status | title }}
+        </span>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border-light);">
+      <div style="display:grid; grid-template-columns:1fr 1fr; divide-x:1px solid var(--border);">
+        <div style="padding:1rem 1.25rem; border-right:1px solid var(--border-light); text-align:center;">
+          <div style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--text);">{{ student.year_of_study }}</div>
+          <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Year</div>
+        </div>
+        <div style="padding:1rem 1.25rem; text-align:center;">
+          <div style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--text);">{{ student.semester or '—' }}</div>
+          <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">Semester</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contact Info -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-address-card" style="color:var(--accent); margin-right:0.5rem;"></i>Contact Information</span>
+    </div>
+    <div class="card-body">
+      {% set info = [
+        ('Roll Number', student.roll_number, 'fas fa-id-card'),
+        ('Registration No.', student.registration_number or '—', 'fas fa-hashtag'),
+        ('Phone', student.phone_number or '—', 'fas fa-phone'),
+        ('Email', student.email, 'fas fa-envelope'),
+        ('Blood Group', student.blood_group or '—', 'fas fa-tint'),
+        ('Gender', (student.gender or '—') | title, 'fas fa-user'),
+        ('Nationality', student.nationality or 'Indian', 'fas fa-flag'),
+        ('Batch Year', student.batch_year or '—', 'fas fa-calendar'),
+      ] %}
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        {% for label, value, icon in info %}
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid var(--border-light);">
+          <i class="{{ icon }}" style="color:var(--text-muted); width:16px; text-align:center; font-size:0.875rem; flex-shrink:0;"></i>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">{{ label }}</div>
+            <div style="font-size:0.875rem; font-weight:500; color:var(--text); font-family:{{ 'var(--font-mono)' if label in ['Roll Number','Registration No.'] else 'inherit' }};">{{ value }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="grid-2 mt-3">
+
+  <!-- Address Details -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-map-marker-alt" style="color:var(--accent); margin-right:0.5rem;"></i>Permanent Address</span>
+    </div>
+    <div class="card-body">
+      {% if student.permanent_address %}
+      <p style="font-size:0.875rem; color:var(--text); line-height:1.7;">{{ student.permanent_address }}</p>
+      <div style="display:flex; gap:1rem; margin-top:0.75rem; flex-wrap:wrap;">
+        {% if student.city %}<span class="badge badge-muted"><i class="fas fa-city"></i> {{ student.city }}</span>{% endif %}
+        {% if student.state %}<span class="badge badge-muted"><i class="fas fa-map"></i> {{ student.state }}</span>{% endif %}
+        {% if student.pincode %}<span class="badge badge-muted"><i class="fas fa-mail-bulk"></i> {{ student.pincode }}</span>{% endif %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-map-marker-alt"></i></div>
+        <h3>No Address On Record</h3>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Parent / Guardian -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-users" style="color:var(--accent); margin-right:0.5rem;"></i>Parent / Guardian</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex; flex-direction:column; gap:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid var(--border-light);">
+          <i class="fas fa-user" style="color:var(--text-muted); width:16px;"></i>
+          <div>
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">Name</div>
+            <div style="font-size:0.875rem; font-weight:500;">{{ student.parent_name or '—' }}</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid var(--border-light);">
+          <i class="fas fa-phone" style="color:var(--text-muted); width:16px;"></i>
+          <div>
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">Phone</div>
+            <div style="font-size:0.875rem; font-weight:500;">{{ student.parent_phone or '—' }}</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0;">
+          <i class="fas fa-phone-alt" style="color:var(--text-muted); width:16px;"></i>
+          <div>
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">Emergency Contact</div>
+            <div style="font-size:0.875rem; font-weight:500;">{{ student.emergency_contact or '—' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
 {% endblock %}

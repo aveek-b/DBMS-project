@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}My Room — HMS Portal{% endblock %}
+{% block page_title %}My Room{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Room Details</h1>
+  <p>Your current room allocation and roommate information.</p>
+</div>
+
+{% if student and student.room_id %}
+
+<div class="grid-2">
+
+  <!-- Room Info -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-door-open" style="color:var(--accent); margin-right:0.5rem;"></i>Room Information</span>
+      <span class="badge badge-success">Allocated</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex; align-items:center; gap:1.5rem; margin-bottom:1.5rem;">
+        <div style="width:70px; height:70px; background:var(--accent-light); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:1.4rem; font-weight:700; color:var(--accent-dark); border:2px solid var(--accent);">
+          {{ student.room_number }}
+        </div>
+        <div>
+          <div style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--text);">Room {{ student.room_number }}</div>
+          <div style="color:var(--text-muted); font-size:0.875rem;">{{ student.block_name }}</div>
+        </div>
+      </div>
+
+      {% set room_details = [
+        ('Block', student.block_name, 'fas fa-building'),
+        ('Block Type', (student.block_type or '') | title, 'fas fa-venus-mars'),
+        ('Floor', student.floor_number, 'fas fa-layer-group'),
+        ('Room Type', (student.room_type or '') | title, 'fas fa-door-open'),
+      ] %}
+      <div style="display:flex; flex-direction:column; gap:0;">
+        {% for label, value, icon in room_details %}
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 0; border-bottom:1px solid var(--border-light);">
+          <div style="display:flex; align-items:center; gap:0.6rem; color:var(--text-muted); font-size:0.82rem;">
+            <i class="{{ icon }}" style="width:14px;"></i>
+            {{ label }}
+          </div>
+          <div style="font-weight:600; font-size:0.875rem; color:var(--text);">{{ value }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:1rem; padding:0.875rem; background:var(--bg); border-radius:var(--radius-sm); border:1px solid var(--border);">
+        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.4rem; font-weight:600;">Hostel Join Date</div>
+        <div style="font-weight:600;">{{ student.hostel_join_date.strftime('%d %B %Y') if student.hostel_join_date else '—' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roommates -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title"><i class="fas fa-users" style="color:var(--accent); margin-right:0.5rem;"></i>Roommates</span>
+      <span class="badge badge-muted">{{ roommates | length }} roommate{{ 's' if roommates | length != 1 else '' }}</span>
+    </div>
+    <div class="card-body">
+      {% if roommates %}
+        {% for r in roommates %}
+        <div style="display:flex; align-items:center; gap:1rem; padding:0.875rem; background:var(--bg); border-radius:var(--radius-sm); margin-bottom:0.75rem; border:1px solid var(--border);">
+          <div style="width:42px; height:42px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-weight:700; color:#fff; font-size:1rem; flex-shrink:0;">
+            {{ r.first_name[0] }}{{ (r.last_name or '?')[0] }}
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-weight:600; font-size:0.875rem;">{{ r.first_name }} {{ r.last_name or '' }}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">{{ r.course }} · {{ r.branch }}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">{{ r.roll_number }}</div>
+          </div>
+          <div style="text-align:right; flex-shrink:0;">
+            <div style="font-size:0.72rem; color:var(--text-muted);">Year {{ r.year_of_study }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">{{ r.phone_number or '' }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon"><i class="fas fa-user-friends"></i></div>
+        <h3>No Roommates Yet</h3>
+        <p>You're the only one in this room currently.</p>
+        <a href="{{ url_for('student.roommate_matches') }}" class="btn btn-primary btn-sm mt-2">Find Roommates</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{% else %}
+
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state" style="padding: 4rem 1rem;">
+      <div class="empty-state-icon"><i class="fas fa-door-closed"></i></div>
+      <h3>No Room Assigned</h3>
+      <p>You haven't been allocated a room yet. Please contact the warden or hostel administration.</p>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

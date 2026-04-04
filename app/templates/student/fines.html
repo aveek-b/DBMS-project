@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Fines — HMS Portal{% endblock %}
+{% block page_title %}Fines & Payments{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>My Fines</h1>
+  <p>View and track your hostel fines and payment history.</p>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+  {% set pending_total = namespace(val=0) %}
+  {% set paid_total = namespace(val=0) %}
+  {% set overdue_count = namespace(val=0) %}
+  {% for f in fines %}
+    {% if f.status in ['PENDING','PARTIALLY_PAID','OVERDUE'] %}
+      {% set pending_total.val = pending_total.val + (f.balance or 0) %}
+    {% endif %}
+    {% if f.status == 'PAID' %}{% set paid_total.val = paid_total.val + (f.amount or 0) %}{% endif %}
+    {% if f.status == 'OVERDUE' %}{% set overdue_count.val = overdue_count.val + 1 %}{% endif %}
+  {% endfor %}
+  <div class="stat-card {{ 'danger' if pending_total.val > 0 else '' }}">
+    <div class="stat-label">Total Pending</div>
+    <div class="stat-value">₹{{ "%.0f"|format(total_pending or pending_total.val) }}</div>
+    <div class="stat-sub">Amount due</div>
+    <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+  </div>
+  <div class="stat-card warning">
+    <div class="stat-label">Overdue</div>
+    <div class="stat-value">{{ overdue_count.val }}</div>
+    <div class="stat-sub">Past due date</div>
+    <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-label">Total Paid</div>
+    <div class="stat-value">₹{{ "%.0f"|format(paid_total.val) }}</div>
+    <div class="stat-sub">Cleared fines</div>
+    <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+  </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="tabs">
+  <a href="{{ url_for('student.fines') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('student.fines', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('student.fines', status='OVERDUE') }}" class="tab-btn {{ 'active' if current_status == 'OVERDUE' }}">Overdue</a>
+  <a href="{{ url_for('student.fines', status='PAID') }}" class="tab-btn {{ 'active' if current_status == 'PAID' }}">Paid</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if fines %}
+    <table>
+      <thead>
+        <tr>
+          <th>Fine #</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Amount</th>
+          <th>Paid</th>
+          <th>Balance</th>
+          <th>Due Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fines %}
+        <tr>
+          <td><span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--primary); font-weight:600;">{{ f.fine_number }}</span></td>
+          <td><span class="badge badge-muted">{{ f.fine_type | replace('_',' ') | title }}</span></td>
+          <td style="max-width:200px;">
+            <div style="font-size:0.82rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ f.description or '—' }}</div>
+          </td>
+          <td style="font-weight:600;">₹{{ "%.2f"|format(f.amount or 0) }}</td>
+          <td style="color:var(--success);">₹{{ "%.2f"|format(f.paid_amount or 0) }}</td>
+          <td style="font-weight:600; color:{{ 'var(--danger)' if (f.balance or 0) > 0 else 'var(--text-muted)' }};">
+            ₹{{ "%.2f"|format(f.balance or 0) }}
+          </td>
+          <td style="font-size:0.8rem; color:{{ 'var(--danger)' if f.status == 'OVERDUE' else 'var(--text-muted)' }};">
+            {{ f.due_date.strftime('%d %b %Y') if f.due_date else '—' }}
+          </td>
+          <td>
+            <span class="badge badge-{{ 'danger' if f.status == 'OVERDUE' else 'warning' if f.status in ['PENDING','PARTIALLY_PAID'] else 'success' if f.status == 'PAID' else 'muted' }}">
+              {{ f.status | replace('_',' ') | title }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon"><i class="fas fa-smile" style="color:var(--success);"></i></div>
+      <h3>No Fines Found</h3>
+      <p>{% if current_status %}No {{ current_status | lower }} fines.{% else %}You have no fines on record. Keep it up!{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if (total_pending or 0) > 0 %}
+<div class="alert alert-warning mt-2">
+  <i class="fas fa-exclamation-triangle"></i>
+  You have an outstanding balance of <strong>₹{{ "%.2f"|format(total_pending or 0) }}</strong>. Please visit the hostel office to clear your dues.
+</div>
+{% endif %}
+{% endblock %}

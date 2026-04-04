@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Leave Requests — HMS Portal{% endblock %}
+{% block page_title %}Leave Requests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Leave Requests</h1>
+      <p>Apply for leave and track your applications.</p>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('newLeaveModal').classList.add('active')">
+      <i class="fas fa-plus"></i> Apply for Leave
+    </button>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="{{ url_for('student.leave_requests') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('student.leave_requests', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('student.leave_requests', status='APPROVED') }}" class="tab-btn {{ 'active' if current_status == 'APPROVED' }}">Approved</a>
+  <a href="{{ url_for('student.leave_requests', status='REJECTED') }}" class="tab-btn {{ 'active' if current_status == 'REJECTED' }}">Rejected</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if leaves %}
+    <table>
+      <thead>
+        <tr>
+          <th>Leave #</th>
+          <th>Type</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Duration</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Approved By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lr in leaves %}
+        <tr>
+          <td><span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--primary); font-weight:600;">{{ lr.leave_number }}</span></td>
+          <td><span class="badge badge-primary">{{ lr.leave_type | replace('_',' ') | title }}</span></td>
+          <td style="font-size:0.82rem;">{{ lr.from_date.strftime('%d %b %Y') if lr.from_date else '—' }}</td>
+          <td style="font-size:0.82rem;">{{ lr.to_date.strftime('%d %b %Y') if lr.to_date else '—' }}</td>
+          <td style="font-size:0.82rem; text-align:center;">
+            {% if lr.from_date and lr.to_date %}
+              {{ (lr.to_date - lr.from_date).days + 1 }} day{{ 's' if (lr.to_date - lr.from_date).days + 1 != 1 else '' }}
+            {% else %}—{% endif %}
+          </td>
+          <td style="max-width:180px;">
+            <div style="font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ lr.reason }}</div>
+          </td>
+          <td>
+            <span class="badge badge-{{ 'warning' if lr.status == 'PENDING' else 'success' if lr.status == 'APPROVED' else 'danger' if lr.status == 'REJECTED' else 'muted' }}">
+              {{ lr.status | title }}
+            </span>
+            {% if lr.late_return == 'Y' %}<span class="badge badge-danger" style="margin-left:0.25rem;">Late Return</span>{% endif %}
+          </td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">{{ lr.approved_by_name or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon"><i class="fas fa-calendar"></i></div>
+      <h3>No Leave Requests</h3>
+      <p>{% if current_status %}No {{ current_status | lower }} requests.{% else %}You haven't applied for any leave yet.{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- New Leave Modal -->
+<div class="modal-overlay" id="newLeaveModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <span class="modal-title">Apply for Leave</span>
+      <button class="modal-close" onclick="document.getElementById('newLeaveModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('student.leave_requests') }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Leave Type <span style="color:var(--danger);">*</span></label>
+            <select name="leave_type" class="form-control" required>
+              <option value="">Select type</option>
+              <option value="DAY_PASS">Day Pass</option>
+              <option value="NIGHT_PASS">Night Pass</option>
+              <option value="WEEKEND">Weekend</option>
+              <option value="VACATION">Vacation</option>
+              <option value="EMERGENCY">Emergency</option>
+              <option value="MEDICAL">Medical</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destination</label>
+            <input type="text" name="destination" class="form-control" placeholder="Where are you going?">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">From Date <span style="color:var(--danger);">*</span></label>
+            <input type="date" name="from_date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">To Date <span style="color:var(--danger);">*</span></label>
+            <input type="date" name="to_date" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Contact During Leave</label>
+            <input type="tel" name="contact_during_leave" class="form-control" placeholder="Your phone number">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Parent Contact</label>
+            <input type="tel" name="parent_contact" class="form-control" placeholder="Parent's phone">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reason <span style="color:var(--danger);">*</span></label>
+          <textarea name="reason" class="form-control" rows="3" placeholder="Reason for leave..." required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('newLeaveModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Set min date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelectorAll('input[type=date]').forEach(el => el.min = today);
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
+  });
+</script>
+{% endblock %}
