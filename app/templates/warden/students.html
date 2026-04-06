@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Students — HMS Portal{% endblock %}
+{% block page_title %}Students{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Block Students</h1>
+      <p>All students assigned to your block.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="card mb-3">
+  <div class="card-body" style="padding:1rem 1.5rem;">
+    <form method="GET" style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+      <input type="text" name="search" value="{{ request.args.get('search','') }}" class="form-control" placeholder="Search by name or roll number..." style="max-width:320px;">
+      <select name="status" class="form-control" style="max-width:180px;">
+        <option value="">All Status</option>
+        <option value="ALLOCATED" {{ 'selected' if request.args.get('status')=='ALLOCATED' }}>Allocated</option>
+        <option value="CHECKED_OUT" {{ 'selected' if request.args.get('status')=='CHECKED_OUT' }}>Checked Out</option>
+        <option value="SUSPENDED" {{ 'selected' if request.args.get('status')=='SUSPENDED' }}>Suspended</option>
+      </select>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-search"></i> Search
+      </button>
+      {% if request.args.get('search') or request.args.get('status') %}
+      <a href="{{ url_for('warden.students') }}" class="btn btn-outline">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if students %}
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Roll No.</th>
+          <th>Room</th>
+          <th>Course</th>
+          <th>Year</th>
+          <th>Phone</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <div style="width:34px; height:34px; border-radius:50%; background:var(--accent-light); display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; color:var(--accent-dark); flex-shrink:0;">
+                {{ s.first_name[0] }}{{ (s.last_name or '?')[0] }}
+              </div>
+              <div>
+                <div style="font-weight:500;">{{ s.first_name }} {{ s.last_name or '' }}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">{{ s.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="text-mono" style="font-size:0.82rem;">{{ s.roll_number }}</span></td>
+          <td>
+            <span class="badge badge-primary">{{ s.room_number or '—' }}</span>
+            <div style="font-size:0.7rem; color:var(--text-muted);">{{ s.room_type | title if s.room_type else '' }}</div>
+          </td>
+          <td style="font-size:0.85rem;">{{ s.course }} – {{ s.branch }}</td>
+          <td style="text-align:center;">{{ s.year_of_study or '—' }}</td>
+          <td style="font-size:0.82rem;">{{ s.phone_number or '—' }}</td>
+          <td>
+            <span class="badge badge-{{ 'success' if s.hostel_status == 'ALLOCATED' else 'muted' if s.hostel_status == 'CHECKED_OUT' else 'danger' }}">
+              {{ s.hostel_status | title }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-users"></i></div>
+      <h3>No Students Found</h3>
+      <p>No students match your search criteria.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Mess Menu — HMS Portal{% endblock %}
+{% block page_title %}Mess Menu{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Weekly Mess Menu</h1>
+  <p>Full week meal schedule with timings.</p>
+</div>
+
+{% set days = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY'] %}
+{% set meal_order = ['BREAKFAST','LUNCH','SNACKS','DINNER'] %}
+{% set meal_icons = {'BREAKFAST':'☀️','LUNCH':'🍱','SNACKS':'🍵','DINNER':'🌙'} %}
+
+<!-- Day Tabs -->
+<div class="tabs" id="dayTabs">
+  {% for day in days %}
+  <button class="tab-btn {{ 'active' if day == today }}" onclick="showDay('{{ day }}')">
+    {{ day | title }}
+  </button>
+  {% endfor %}
+</div>
+
+{% for day in days %}
+<div id="day-{{ day }}" class="day-panel" style="display:{{ 'block' if day == today else 'none' }};">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:1.25rem;">
+    {% set day_meals = menu | selectattr('day_of_week','equalto',day) | list %}
+    {% if day_meals %}
+      {% for meal_type in meal_order %}
+        {% set meal = day_meals | selectattr('meal_type','equalto',meal_type) | list %}
+        {% if meal %}
+          {% set m = meal[0] %}
+          <div class="card" style="border-top:3px solid {{ 'var(--accent)' if meal_type == 'BREAKFAST' else 'var(--primary)' if meal_type == 'LUNCH' else 'var(--warning)' if meal_type == 'SNACKS' else 'var(--bg-sidebar)' }};">
+            <div class="card-header" style="padding:1rem 1.25rem;">
+              <div>
+                <div style="font-size:1.3rem; margin-bottom:0.25rem;">{{ meal_icons.get(meal_type, '🍽️') }}</div>
+                <div class="meal-type">{{ meal_type | title }}</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="meal-time">{{ m.timing_start }}</div>
+                <div class="meal-time">{{ m.timing_end }}</div>
+              </div>
+            </div>
+            <div class="card-body" style="padding:1rem 1.25rem;">
+              <div style="font-size:0.875rem; color:var(--text); line-height:1.7;">
+                {% for item in m.menu_items.split(',') %}
+                  <div style="display:flex; align-items:center; gap:0.5rem; padding:0.2rem 0;">
+                    <span style="width:5px; height:5px; background:var(--accent); border-radius:50%; flex-shrink:0;"></span>
+                    {{ item.strip() }}
+                  </div>
+                {% endfor %}
+              </div>
+              {% if m.special_diet %}
+              <div style="margin-top:0.75rem; padding:0.5rem 0.75rem; background:var(--accent-light); border-radius:var(--radius-sm); font-size:0.75rem; color:var(--accent-dark);">
+                <i class="fas fa-leaf"></i> Special Diet: {{ m.special_diet }}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% else %}
+    <div class="card">
+      <div class="card-body">
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="fas fa-utensils"></i></div>
+          <h3>No Menu</h3>
+          <p>Menu not available for this day.</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showDay(day) {
+  document.querySelectorAll('.day-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('#dayTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('day-' + day).style.display = 'block';
+  event.target.classList.add('active');
+}
+</script>
+{% endblock %}

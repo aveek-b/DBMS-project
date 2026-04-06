@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Room Allocation — HMS Portal{% endblock %}
+{% block page_title %}Room Allocation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Room Allocation</h1>
+  <p>Overview of rooms and occupancy in your block.</p>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:1.25rem;">
+  {% if rooms %}
+    {% for room in rooms %}
+    {% set pct = (room.current_occupancy / room.capacity * 100) if room.capacity > 0 else 0 %}
+    <div class="card room-card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+        <div>
+          <div class="room-number">{{ room.room_number }}</div>
+          <div class="room-block">{{ room.block_name }} &bull; Floor {{ room.floor_number }}</div>
+        </div>
+        <span class="badge badge-{{ 'success' if room.status == 'AVAILABLE' else 'warning' if room.status == 'OCCUPIED' else 'danger' if room.status == 'FULL' else 'muted' }}">
+          {{ room.status | title }}
+        </span>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.35rem;">
+        <span style="color:var(--text-muted);">{{ room.room_type | title }}</span>
+        <span style="font-weight:600;">{{ room.current_occupancy }}/{{ room.capacity }} occupied</span>
+      </div>
+      <div class="occ-bar">
+        <div class="occ-fill {{ 'high' if pct >= 100 else 'medium' if pct > 60 else '' }}" style="width:{{ pct }}%;"></div>
+      </div>
+
+      <div class="room-meta">
+        {% if room.ac_available == 'Y' %}
+        <span class="badge badge-info"><i class="fas fa-snowflake"></i> AC</span>
+        {% endif %}
+        {% if room.attached_bathroom == 'Y' %}
+        <span class="badge badge-muted"><i class="fas fa-bath"></i> Attached</span>
+        {% endif %}
+        <span class="badge badge-accent">₹{{ "%.0f"|format(room.rent_amount) }}/mo</span>
+      </div>
+
+      {% if room.available_beds > 0 %}
+      <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--border-light);">
+        <span style="font-size:0.78rem; color:var(--success); font-weight:600;">
+          <i class="fas fa-check-circle"></i> {{ room.available_beds }} bed{{ 's' if room.available_beds != 1 }} available
+        </span>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="card" style="grid-column:1/-1;">
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-door-open"></i></div>
+      <h3>No Rooms Found</h3>
+      <p>No rooms have been added to your block yet.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Compatibility Quiz — HMS Portal{% endblock %}
+{% block page_title %}Compatibility Quiz{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Roommate Compatibility Quiz</h1>
+      <p>Answer these questions to help us find your best roommate matches.</p>
+    </div>
+    {% if student.compatibility_completed == 'Y' %}
+    <a href="{{ url_for('student.roommate_matches') }}" class="btn btn-primary">
+      <i class="fas fa-users"></i> View My Matches
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+{% if student.compatibility_completed == 'Y' %}
+<div class="alert alert-success mb-3">
+  <i class="fas fa-check-circle"></i>
+  You've already completed the quiz. You can update your answers below.
+</div>
+{% endif %}
+
+{% if not questions %}
+<div class="card">
+  <div class="empty-state" style="padding:3rem;">
+    <div class="empty-state-icon"><i class="fas fa-puzzle-piece"></i></div>
+    <h3>No Questions Available</h3>
+    <p>The compatibility quiz hasn't been configured yet.</p>
+  </div>
+</div>
+{% else %}
+
+<form method="POST" action="{{ url_for('student.compatibility_quiz') }}">
+  <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+    {% for q in questions %}
+    {% set current_val = existing_map.get(q.question_id, '') %}
+    {% set opts = q.options.split('|') if q.options else [] %}
+
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex; align-items:flex-start; gap:1rem;">
+
+          <div style="width:32px; height:32px; background:var(--accent-light); border-radius:50%;
+                      display:flex; align-items:center; justify-content:center;
+                      font-family:var(--font-display); font-weight:700; color:var(--accent-dark);
+                      font-size:0.85rem; flex-shrink:0;">
+            {{ loop.index }}
+          </div>
+
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.25rem;">{{ q.question_text }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:0.875rem;">
+              {{ q.category | replace('_',' ') | title }} &bull; Weight: {{ q.weight_percentage }}%
+            </div>
+
+            {% if q.question_type == 'SCALE' %}
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              {% for opt in opts %}{% set opt = opt.strip() %}
+              <label class="scale-label" style="cursor:pointer;">
+                <input type="radio" name="q_{{ q.question_id }}" value="{{ opt }}"
+                       {{ 'checked' if current_val == opt else '' }} style="display:none;">
+                <span class="scale-btn" style="display:inline-flex; align-items:center; justify-content:center;
+                      width:44px; height:44px; border:2px solid {{ 'var(--primary)' if current_val == opt else 'var(--border)' }};
+                      border-radius:50%; font-weight:600; font-size:0.9rem; transition:var(--transition); cursor:pointer;
+                      background:{{ 'var(--primary)' if current_val == opt else '' }};
+                      color:{{ '#fff' if current_val == opt else '' }};">{{ opt }}</span>
+              </label>
+              {% endfor %}
+            </div>
+
+            {% elif q.question_type == 'MULTIPLE' %}
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:0.5rem;">
+              {% for opt in opts %}{% set opt = opt.strip() %}
+              <label style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem;
+                            border:1px solid {{ 'var(--primary)' if current_val and opt in current_val else 'var(--border)' }};
+                            border-radius:var(--radius-sm); cursor:pointer; font-size:0.82rem;
+                            background:{{ 'var(--accent-light)' if current_val and opt in current_val else '' }};">
+                <input type="checkbox" name="q_{{ q.question_id }}" value="{{ opt }}"
+                       {{ 'checked' if current_val and opt in current_val else '' }}
+                       style="accent-color:var(--primary);">
+                {{ opt }}
+              </label>
+              {% endfor %}
+            </div>
+
+            {% else %}
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:0.5rem;">
+              {% for opt in opts %}{% set opt = opt.strip() %}
+              <label class="radio-opt" style="display:flex; align-items:center; gap:0.5rem;
+                            padding:0.6rem 0.875rem;
+                            border:1px solid {{ 'var(--primary)' if current_val == opt else 'var(--border)' }};
+                            border-radius:var(--radius-sm); cursor:pointer; font-size:0.82rem;
+                            transition:var(--transition);
+                            background:{{ 'var(--accent-light)' if current_val == opt else '' }};
+                            font-weight:{{ '600' if current_val == opt else '400' }};">
+                <input type="radio" name="q_{{ q.question_id }}" value="{{ opt }}"
+                       {{ 'checked' if current_val == opt else '' }}
+                       style="accent-color:var(--primary); display:none;">
+                <span class="radio-dot" style="width:14px; height:14px; border-radius:50%;
+                      border:2px solid {{ 'var(--primary)' if current_val == opt else 'var(--border)' }};
+                      display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  {% if current_val == opt %}<span style="width:6px;height:6px;border-radius:50%;background:var(--primary);display:block;"></span>{% endif %}
+                </span>
+                {{ opt }}
+              </label>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem; padding-bottom:2rem;">
+    <a href="{{ url_for('student.dashboard') }}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-primary btn-lg">
+      <i class="fas fa-save"></i> Save Responses
+    </button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.radio-opt input[type="radio"]').forEach(input => {
+  input.addEventListener('change', () => {
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(i => {
+      const l = i.closest('.radio-opt');
+      l.style.borderColor = ''; l.style.background = ''; l.style.fontWeight = '';
+      const d = l.querySelector('.radio-dot');
+      d.style.borderColor = 'var(--border)'; d.innerHTML = '';
+    });
+    const l = input.closest('.radio-opt');
+    l.style.borderColor = 'var(--primary)'; l.style.background = 'var(--accent-light)'; l.style.fontWeight = '600';
+    const d = l.querySelector('.radio-dot');
+    d.style.borderColor = 'var(--primary)';
+    d.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:var(--primary);display:block;"></span>';
+  });
+});
+
+document.querySelectorAll('.scale-label input[type="radio"]').forEach(input => {
+  input.addEventListener('change', () => {
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(i => {
+      const b = i.nextElementSibling;
+      b.style.borderColor = 'var(--border)'; b.style.background = ''; b.style.color = '';
+    });
+    if (input.checked) {
+      const b = input.nextElementSibling;
+      b.style.borderColor = 'var(--primary)'; b.style.background = 'var(--primary)'; b.style.color = '#fff';
+    }
+  });
+});
+</script>
+{% endblock %}

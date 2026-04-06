@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Complaints — HMS Portal{% endblock %}
+{% block page_title %}Complaints{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Block Complaints</h1>
+  <p>Manage and resolve complaints from your block's students.</p>
+</div>
+
+<div class="tabs">
+  <a href="{{ url_for('warden.complaints') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('warden.complaints', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('warden.complaints', status='IN_PROGRESS') }}" class="tab-btn {{ 'active' if current_status == 'IN_PROGRESS' }}">In Progress</a>
+  <a href="{{ url_for('warden.complaints', status='RESOLVED') }}" class="tab-btn {{ 'active' if current_status == 'RESOLVED' }}">Resolved</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if complaints %}
+    <table>
+      <thead>
+        <tr>
+          <th>Complaint No.</th>
+          <th>Student</th>
+          <th>Room</th>
+          <th>Category</th>
+          <th>Subject</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Filed</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in complaints %}
+        <tr>
+          <td><span class="text-mono" style="font-size:0.78rem;">{{ c.complaint_number }}</span></td>
+          <td>
+            <div style="font-weight:500; font-size:0.875rem;">{{ c.first_name }} {{ c.last_name }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">{{ c.roll_number }}</div>
+          </td>
+          <td><span class="badge badge-muted">{{ c.room_number or '—' }}</span></td>
+          <td style="font-size:0.82rem;">{{ c.category_name or '—' }}</td>
+          <td style="font-size:0.85rem; max-width:180px;">{{ c.subject }}</td>
+          <td>
+            <span class="badge badge-{{ 'danger' if c.priority == 'CRITICAL' else 'warning' if c.priority == 'HIGH' else 'info' if c.priority == 'MEDIUM' else 'muted' }}">
+              {{ c.priority | title }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-{{ 'warning' if c.status == 'PENDING' else 'info' if c.status == 'IN_PROGRESS' else 'success' if c.status in ['RESOLVED','CLOSED'] else 'muted' }}">
+              {{ c.status | replace('_',' ') | title }}
+            </span>
+          </td>
+          <td style="font-size:0.78rem; color:var(--text-muted);">{{ c.created_at.strftime('%d %b') if c.created_at else '—' }}</td>
+          <td>
+            {% if c.status in ['PENDING', 'ASSIGNED', 'IN_PROGRESS'] %}
+            <button class="btn btn-success btn-sm" onclick="openUpdateModal({{ c.complaint_id }}, '{{ c.status }}')">
+              Update
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-check-circle" style="color:var(--success);"></i></div>
+      <h3>No Complaints Found</h3>
+      <p>{{ 'No complaints with this status.' if current_status else 'Your block has no complaints on record.' }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal-overlay" id="updateModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Update Complaint Status</span>
+      <button class="modal-close" onclick="closeModal('updateModal')">✕</button>
+    </div>
+    <form method="POST" id="updateForm">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">New Status</label>
+          <select name="new_status" class="form-control" required>
+            <option value="ASSIGNED">Assigned</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+        <input type="hidden" name="updated_by" value="{{ current_user.user_id }}">
+        <div class="form-group">
+          <label class="form-label">Resolution Notes</label>
+          <textarea name="resolution_notes" class="form-control" rows="3" placeholder="Add notes or resolution details..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('updateModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Status</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openUpdateModal(complaintId, currentStatus) {
+  document.getElementById('updateForm').action = `/warden/complaints/${complaintId}/update`;
+  document.getElementById('updateModal').classList.add('active');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+</script>
+{% endblock %}

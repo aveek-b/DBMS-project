@@ -83,10 +83,16 @@ def execute_query(query, params=None, fetch='all'):
 
         columns = [desc[0].lower() for desc in cursor.description] if cursor.description else []
 
+        def convert_lob(value):
+            """Convert LOB objects to strings."""
+            if hasattr(value, 'read'):
+                return value.read()
+            return value
+
         if fetch == 'one' and result:
-            return dict(zip(columns, result))
+            return {col: convert_lob(val) for col, val in zip(columns, result)}
         elif fetch == 'all' and result:
-            return [dict(zip(columns, row)) for row in result]
+            return [{col: convert_lob(val) for col, val in zip(columns, row)} for row in result]
         return result
     finally:
         cursor.close()
@@ -486,7 +492,7 @@ def create_leave_request(student_id, leave_type, from_date, to_date, reason,
             ) VALUES (
                 seq_leave_requests.NEXTVAL,
                 'LVE-' || TO_CHAR(SYSDATE, 'YYYYMM') || '-' || LPAD(seq_leave_number.NEXTVAL, 5, '0'),
-                :student_id, :leave_type, :from_date, :to_date, :reason, :destination,
+                :student_id, :leave_type, TO_DATE(:from_date, 'YYYY-MM-DD'), TO_DATE(:to_date, 'YYYY-MM-DD'), :reason, :destination,
                 :contact_during_leave, :parent_contact, 'PENDING', CURRENT_TIMESTAMP
             )
             RETURNING leave_id INTO :leave_id
@@ -618,25 +624,112 @@ def get_active_announcements(target_audience='ALL', block_id=None, limit=10):
 # ============================================
 
 def get_compatibility_questions():
-    """Get all active compatibility questions."""
+    # Deduplicate by question_text (data may have been inserted multiple times
+    # with different question_ids). Pick the row with the lowest question_id
+    # for each unique question text.
     query = """
-        SELECT * FROM compatibility_questions
-        WHERE is_active = 'Y'
+        SELECT question_id, category, question_text,
+               question_type, options, weight_percentage, display_order
+        FROM (
+            SELECT question_id, category, question_text,
+                   question_type, options, weight_percentage, display_order,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY question_text
+                       ORDER BY question_id
+                   ) AS rn
+            FROM compatibility_questions
+            WHERE is_active = 'Y'
+        )
+        WHERE rn = 1
         ORDER BY display_order, question_id
     """
     return execute_query(query)
 
 
 def get_student_compatibility_responses(student_id):
-    """Get compatibility responses for a student."""
-    query = """
-        SELECT cr.*, cq.category, cq.question_text
-        FROM compatibility_responses cr
-        JOIN compatibility_questions cq ON cr.question_id = cq.question_id
-        WHERE cr.student_id = :student_id
-        ORDER BY cq.display_order
+    """Get compatibility responses for a student.
+
+    Normalises duplicate question rows (same question_text, different question_id)
+    by mapping every response to the canonical question_id (lowest id for that
+    question text).  This keeps existing_map keys in sync with what
+    get_compatibility_questions() returns.
     """
-    return execute_query(query, {'student_id': student_id})
+    query = """
+        SELECT canonical.question_id,
+               cr.student_id,
+               cr.response_value,
+               cq.category,
+               cq.question_text,
+               cq.weight_percentage,
+               cq.display_order
+        FROM compatibility_responses cr
+        JOIN compatibility_questions cq
+            ON cr.question_id = cq.question_id
+        JOIN (
+            SELECT question_text, MIN(question_id) AS question_id
+            FROM compatibility_questions
+            WHERE is_active = 'Y'
+            GROUP BY question_text
+        ) canonical
+            ON cq.question_text = canonical.question_text
+        WHERE cr.student_id = :student_id
+        ORDER BY cq.display_order, canonical.question_id
+    """
+    rows = execute_query(query, {'student_id': student_id})
+    if not rows:
+        return rows
+
+    # Deduplicate: keep only the last response per canonical question_id
+    seen = {}
+    for row in rows:
+        seen[row['question_id']] = row
+    return list(seen.values())
+
+
+def get_student_by_id(student_id):
+    """Get student profile by student_id (not user_id)."""
+    query = """
+        SELECT s.*, u.email, u.phone_number, u.first_name, u.last_name,
+               r.room_number, r.room_type, r.floor_number,
+               hb.block_name, hb.block_type
+        FROM students s
+        JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN rooms r ON s.room_id = r.room_id
+        LEFT JOIN hostel_blocks hb ON r.block_id = hb.block_id
+        WHERE s.student_id = :student_id
+    """
+    return execute_query(query, {'student_id': student_id}, fetch='one')
+
+
+def get_room_by_id(room_id):
+    """Get room details by room_id."""
+    query = """
+        SELECT r.*, hb.block_name, hb.block_type,
+               r.capacity - r.current_occupancy AS available_beds
+        FROM rooms r
+        JOIN hostel_blocks hb ON r.block_id = hb.block_id
+        WHERE r.room_id = :room_id
+    """
+    return execute_query(query, {'room_id': room_id}, fetch='one')
+
+
+def get_unallocated_students_for_room(room_id, exclude_student_id):
+    """Return PENDING students whose gender is eligible for the given room's block."""
+    query = """
+        SELECT s.student_id, s.roll_number, s.course, s.branch,
+               s.year_of_study, s.gender, s.compatibility_completed,
+               u.first_name, u.last_name, u.email, u.phone_number,
+               u.first_name || ' ' || NVL(u.last_name, '') AS full_name
+        FROM students s
+        JOIN users u ON s.user_id = u.user_id
+        JOIN rooms r ON r.room_id = :room_id
+        JOIN hostel_blocks hb ON r.block_id = hb.block_id
+        WHERE s.student_id != :exclude_id
+        AND s.hostel_status = 'PENDING'
+        AND (hb.block_type = 'COED' OR s.gender = hb.block_type)
+        ORDER BY s.roll_number
+    """
+    return execute_query(query, {'room_id': room_id, 'exclude_id': exclude_student_id})
 
 
 def calculate_compatibility(student1_id, student2_id):
@@ -655,7 +748,14 @@ def get_best_roommate_matches(student_id, limit=5):
             [student_id, limit]
         )
         columns = [desc[0].lower() for desc in result_cursor.description]
-        return [dict(zip(columns, row)) for row in result_cursor]
+
+        def convert_lob(value):
+            """Convert LOB objects to strings."""
+            if hasattr(value, 'read'):
+                return value.read()
+            return value
+
+        return [{col: convert_lob(val) for col, val in zip(columns, row)} for row in result_cursor]
     finally:
         cursor.close()
 
@@ -743,6 +843,24 @@ def get_block_leave_requests(block_id, status=None):
         query += " AND lr.status = :status"
         params['status'] = status
     query += " ORDER BY lr.created_at DESC"
+    return execute_query(query, params)
+
+
+def get_block_housekeeping_requests(block_id, status=None):
+    """Get housekeeping requests from a block."""
+    query = """
+        SELECT hr.*, s.roll_number, u.first_name, u.last_name, r.room_number
+        FROM housekeeping_requests hr
+        JOIN students s ON hr.student_id = s.student_id
+        JOIN users u ON s.user_id = u.user_id
+        JOIN rooms r ON hr.room_id = r.room_id
+        WHERE r.block_id = :block_id
+    """
+    params = {'block_id': block_id}
+    if status:
+        query += " AND hr.status = :status"
+        params['status'] = status
+    query += " ORDER BY hr.created_at DESC"
     return execute_query(query, params)
 
 

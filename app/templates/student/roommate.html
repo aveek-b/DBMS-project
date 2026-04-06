@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Roommate Matches — HMS Portal{% endblock %}
+{% block page_title %}Find Roommates{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Roommate Matches</h1>
+      <p>Students with the highest compatibility scores based on your quiz responses.</p>
+    </div>
+    <a href="{{ url_for('student.compatibility_quiz') }}" class="btn btn-outline">
+      <i class="fas fa-redo"></i> Retake Quiz
+    </a>
+  </div>
+</div>
+
+{% if student.compatibility_completed != 'Y' %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon"><i class="fas fa-puzzle-piece"></i></div>
+      <h3>Complete the Compatibility Quiz First</h3>
+      <p>You need to fill out the compatibility questionnaire before we can find your matches.</p>
+      <a href="{{ url_for('student.compatibility_quiz') }}" class="btn btn-primary mt-2">
+        <i class="fas fa-clipboard-list"></i> Take the Quiz
+      </a>
+    </div>
+  </div>
+</div>
+
+{% elif not matches %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon"><i class="fas fa-users-slash"></i></div>
+      <h3>No Matches Found</h3>
+      <p>No other students have completed the quiz yet. Check back later!</p>
+    </div>
+  </div>
+</div>
+
+{% else %}
+
+<div style="display:flex; flex-direction:column; gap:1rem;">
+  {% for m in matches %}
+  {% set score = m.compatibility_score or 0 %}
+  {% set cat = m.category_info or {} %}
+  <div class="card" style="border-left:4px solid {{ 'var(--success)' if score >= 85 else 'var(--primary)' if score >= 70 else 'var(--warning)' if score >= 50 else 'var(--danger)' }};">
+    <div class="card-body">
+      <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+
+        <!-- Avatar & Score -->
+        <div style="display:flex; align-items:center; gap:1rem; flex-shrink:0;">
+          <div class="compat-circle {{ 'excellent' if score >= 85 else 'good' if score >= 70 else 'moderate' if score >= 50 else 'poor' }}" style="width:64px; height:64px; font-size:1.1rem;">
+            {{ "%.0f"|format(score) }}%
+          </div>
+          <div>
+            <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; color:var(--text);">{{ m.full_name }}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">{{ m.roll_number }}</div>
+          </div>
+        </div>
+
+        <!-- Details -->
+        <div style="flex:1; display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+          <span class="badge badge-primary">{{ m.course }}</span>
+          <span class="badge badge-accent">{{ m.branch }}</span>
+          <span class="badge badge-muted">Year {{ m.year_of_study }}</span>
+          <span class="badge badge-{{ cat.get('color','muted') }}">{{ cat.get('category', m.match_category or '') }}</span>
+        </div>
+
+        <!-- Score Bar -->
+        <div style="width:180px; flex-shrink:0;">
+          <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:0.3rem;">
+            <span>Compatibility</span>
+            <span style="font-weight:600; color:var(--text);">{{ "%.1f"|format(score) }}%</span>
+          </div>
+          <div class="occ-bar" style="height:8px;">
+            <div class="occ-fill {{ '' if score >= 70 else 'medium' if score >= 50 else 'high' }}"
+                 style="width:{{ score }}%; background:{{ 'var(--success)' if score >= 85 else 'var(--primary)' if score >= 70 else 'var(--warning)' if score >= 50 else 'var(--danger)' }};"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% endif %}
+
+<div style="margin-top:1rem; padding:1rem 1.25rem; background:var(--accent-light); border-radius:var(--radius); border:1px solid var(--border); font-size:0.82rem; color:var(--text-muted);">
+  <i class="fas fa-info-circle" style="color:var(--accent-dark);"></i>
+  Compatibility scores are based on your quiz responses across sleep habits, study preferences, cleanliness, social habits, and more.
+  Room allocation is done by the warden — this is for your reference only.
+</div>
+{% endblock %}

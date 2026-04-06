@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Wardens — HMS Portal{% endblock %}
+{% block page_title %}Wardens{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Wardens</h1>
+  <p>All warden profiles and their assigned blocks.</p>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if wardens %}
+    <table>
+      <thead>
+        <tr>
+          <th>Warden</th>
+          <th>Employee ID</th>
+          <th>Designation</th>
+          <th>Assigned Block</th>
+          <th>Department</th>
+          <th>Experience</th>
+          <th>Phone</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in wardens %}
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+              <div style="width:36px; height:36px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; color:#fff; flex-shrink:0;">
+                {{ w.first_name[0] }}{{ (w.last_name or '?')[0] }}
+              </div>
+              <div>
+                <div style="font-weight:500;">{{ w.first_name }} {{ w.last_name or '' }}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">{{ w.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="text-mono" style="font-size:0.82rem;">{{ w.employee_id }}</span></td>
+          <td style="font-size:0.85rem;">{{ w.designation or '—' }}</td>
+          <td>{% if w.block_name %}<span class="badge badge-primary">{{ w.block_name }}</span>{% else %}<span style="color:var(--text-muted);">Unassigned</span>{% endif %}</td>
+          <td style="font-size:0.82rem;">{{ w.department or '—' }}</td>
+          <td style="font-size:0.82rem; text-align:center;">{{ w.experience_years or '—' }} yr{{ 's' if w.experience_years != 1 }}</td>
+          <td style="font-size:0.82rem;">{{ w.phone_number or '—' }}</td>
+          <td>
+            <span class="badge badge-{{ 'success' if w.status == 'ACTIVE' else 'warning' if w.status == 'ON_LEAVE' else 'muted' }}">
+              {{ w.status | replace('_',' ') | title }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-user-shield"></i></div>
+      <h3>No Wardens Found</h3>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Housekeeping — HMS Portal{% endblock %}
+{% block page_title %}Housekeeping{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Housekeeping Requests</h1>
+      <p>Request room cleaning and maintenance services.</p>
+    </div>
+    {% if student and student.room_id %}
+    <button class="btn btn-primary" onclick="document.getElementById('newHKModal').classList.add('active')">
+      <i class="fas fa-plus"></i> New Request
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="{{ url_for('student.housekeeping') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('student.housekeeping', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('student.housekeeping', status='SCHEDULED') }}" class="tab-btn {{ 'active' if current_status == 'SCHEDULED' }}">Scheduled</a>
+  <a href="{{ url_for('student.housekeeping', status='COMPLETED') }}" class="tab-btn {{ 'active' if current_status == 'COMPLETED' }}">Completed</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if requests %}
+    <table>
+      <thead>
+        <tr>
+          <th>Request #</th>
+          <th>Service Type</th>
+          <th>Description</th>
+          <th>Preferred Date</th>
+          <th>Urgency</th>
+          <th>Status</th>
+          <th>Assigned To</th>
+          <th>Rating</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td><span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--primary); font-weight:600;">{{ r.request_number }}</span></td>
+          <td><span class="badge badge-accent">{{ r.service_type | replace('_',' ') | title }}</span></td>
+          <td style="max-width:180px;">
+            <div style="font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.description or '—' }}</div>
+          </td>
+          <td style="font-size:0.82rem;">{{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}</td>
+          <td>
+            <span class="badge badge-{{ 'danger' if r.urgency == 'URGENT' else 'warning' if r.urgency == 'HIGH' else 'info' if r.urgency == 'NORMAL' else 'muted' }}">
+              {{ r.urgency | title }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-{{ 'warning' if r.status == 'PENDING' else 'info' if r.status in ['SCHEDULED','IN_PROGRESS'] else 'success' if r.status == 'COMPLETED' else 'muted' }}">
+              {{ r.status | replace('_',' ') | title }}
+            </span>
+          </td>
+          <td style="font-size:0.82rem; color:var(--text-muted);">{{ r.staff_name or '—' }}</td>
+          <td>
+            {% if r.feedback_rating %}
+              {% for i in range(1, 6) %}
+                <i class="fas fa-star" style="color:{{ 'var(--accent)' if i <= r.feedback_rating else 'var(--border)' }}; font-size:0.7rem;"></i>
+              {% endfor %}
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state" style="padding:3rem;">
+      <div class="empty-state-icon"><i class="fas fa-broom"></i></div>
+      <h3>No Requests Found</h3>
+      <p>{% if current_status %}No {{ current_status | lower }} requests.{% else %}No housekeeping requests yet.{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal-overlay" id="newHKModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">New Housekeeping Request</span>
+      <button class="modal-close" onclick="document.getElementById('newHKModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('student.housekeeping') }}">
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Service Type <span style="color:var(--danger);">*</span></label>
+            <select name="service_type" class="form-control" required>
+              <option value="">Select service</option>
+              <option value="CLEANING">Room Cleaning</option>
+              <option value="LAUNDRY">Laundry</option>
+              <option value="PEST_CONTROL">Pest Control</option>
+              <option value="PLUMBING">Plumbing</option>
+              <option value="ELECTRICAL">Electrical</option>
+              <option value="FURNITURE">Furniture Repair</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Urgency</label>
+            <select name="urgency" class="form-control">
+              <option value="LOW">Low</option>
+              <option value="NORMAL" selected>Normal</option>
+              <option value="HIGH">High</option>
+              <option value="URGENT">Urgent</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Preferred Date</label>
+            <input type="date" name="preferred_date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preferred Time</label>
+            <input type="text" name="preferred_time" class="form-control" placeholder="e.g. 10:00 AM – 12:00 PM">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3" placeholder="Describe the issue or service needed..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('newHKModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const today = new Date().toISOString().split('T')[0];
+  document.querySelectorAll('input[type=date]').forEach(el => el.min = today);
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('active'); });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Blocks — HMS Portal{% endblock %}
+{% block page_title %}Hostel Blocks{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Hostel Blocks</h1>
+  <p>All hostel blocks and their overview.</p>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1.25rem;">
+  {% for b in blocks %}
+  {% set pct = (b.current_occupancy / b.total_capacity * 100) if b.total_capacity > 0 else 0 %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">{{ b.block_name }}</div>
+        <div style="font-size:0.72rem; color:var(--text-muted);">{{ b.address or 'No address' }}</div>
+      </div>
+      <span class="badge badge-{{ 'primary' if b.block_type == 'MALE' else 'accent' if b.block_type == 'FEMALE' else 'muted' }}">
+        {{ b.block_type | title }}
+      </span>
+    </div>
+    <div class="card-body">
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+        {% for label, val in [('Rooms', b.total_rooms), ('Capacity', b.total_capacity), ('Occupied', b.current_occupancy)] %}
+        <div style="text-align:center; background:var(--bg); padding:0.6rem; border-radius:var(--radius-sm);">
+          <div style="font-family:var(--font-display); font-size:1.3rem; font-weight:700;">{{ val or 0 }}</div>
+          <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted);">{{ label }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:0.3rem;">
+        <span style="color:var(--text-muted);">Occupancy</span>
+        <span style="font-weight:600;">{{ "%.0f"|format(pct) }}%</span>
+      </div>
+      <div class="occ-bar">
+        <div class="occ-fill {{ 'high' if pct > 85 else 'medium' if pct > 60 else '' }}" style="width:{{ pct }}%;"></div>
+      </div>
+      <div style="margin-top:0.75rem; font-size:0.8rem; color:var(--text-muted);">
+        <i class="fas fa-user-shield" style="width:16px;"></i> Warden: {{ b.warden_name or 'Not assigned' }}
+      </div>
+      {% if b.facilities %}
+      <div style="margin-top:0.4rem; font-size:0.78rem; color:var(--text-muted);">
+        <i class="fas fa-star" style="width:16px;"></i> {{ b.facilities }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="grid-column:1/-1;">
+    <div class="empty-state"><div class="empty-state-icon"><i class="fas fa-building"></i></div><h3>No Blocks Found</h3></div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

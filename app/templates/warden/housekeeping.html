@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Housekeeping — HMS Portal{% endblock %}
+{% block page_title %}Housekeeping{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Housekeeping Requests</h1>
+  <p>Manage housekeeping and maintenance requests for your block.</p>
+</div>
+
+<div class="tabs">
+  <a href="{{ url_for('warden.housekeeping') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('warden.housekeeping', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('warden.housekeeping', status='SCHEDULED') }}" class="tab-btn {{ 'active' if current_status == 'SCHEDULED' }}">Scheduled</a>
+  <a href="{{ url_for('warden.housekeeping', status='COMPLETED') }}" class="tab-btn {{ 'active' if current_status == 'COMPLETED' }}">Completed</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if requests %}
+    <table>
+      <thead>
+        <tr>
+          <th>Request No.</th>
+          <th>Student</th>
+          <th>Room</th>
+          <th>Service</th>
+          <th>Preferred Date</th>
+          <th>Urgency</th>
+          <th>Staff</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td><span class="text-mono" style="font-size:0.78rem;">{{ r.request_number }}</span></td>
+          <td>
+            <div style="font-weight:500; font-size:0.875rem;">{{ r.first_name }} {{ r.last_name }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">{{ r.roll_number }}</div>
+          </td>
+          <td><span class="badge badge-muted">{{ r.room_number or '—' }}</span></td>
+          <td><span class="badge badge-primary">{{ r.service_type | replace('_',' ') | title }}</span></td>
+          <td style="font-size:0.82rem;">{{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}</td>
+          <td>
+            <span class="badge badge-{{ 'danger' if r.urgency == 'URGENT' else 'warning' if r.urgency == 'HIGH' else 'info' if r.urgency == 'NORMAL' else 'muted' }}">
+              {{ r.urgency | title }}
+            </span>
+          </td>
+          <td style="font-size:0.82rem;">{{ r.staff_name or 'Unassigned' }}</td>
+          <td>
+            <span class="badge badge-{{ 'warning' if r.status == 'PENDING' else 'info' if r.status == 'SCHEDULED' else 'primary' if r.status == 'IN_PROGRESS' else 'success' if r.status == 'COMPLETED' else 'muted' }}">
+              {{ r.status | replace('_',' ') | title }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-broom"></i></div>
+      <h3>No Housekeeping Requests</h3>
+      <p>{{ 'No requests with this status.' if current_status else 'No housekeeping requests for your block.' }}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

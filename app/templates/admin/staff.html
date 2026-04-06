@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Staff — HMS Portal{% endblock %}
+{% block page_title %}Staff{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Staff Management</h1>
+      <p>All hostel staff members.</p>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body" style="padding:1rem 1.5rem;">
+    <form method="GET" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+      <select name="staff_type" class="form-control" style="max-width:200px;">
+        <option value="">All Types</option>
+        <option value="HOUSEKEEPING" {{ 'selected' if request.args.get('staff_type')=='HOUSEKEEPING' }}>Housekeeping</option>
+        <option value="SECURITY" {{ 'selected' if request.args.get('staff_type')=='SECURITY' }}>Security</option>
+        <option value="MAINTENANCE" {{ 'selected' if request.args.get('staff_type')=='MAINTENANCE' }}>Maintenance</option>
+        <option value="MESS" {{ 'selected' if request.args.get('staff_type')=='MESS' }}>Mess</option>
+        <option value="ADMIN" {{ 'selected' if request.args.get('staff_type')=='ADMIN' }}>Admin</option>
+      </select>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{{ url_for('admin.staff') }}" class="btn btn-outline">Clear</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if staff %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Employee ID</th>
+          <th>Type</th>
+          <th>Assigned Block</th>
+          <th>Shift</th>
+          <th>Phone</th>
+          <th>Salary</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in staff %}
+        <tr>
+          <td style="font-weight:500;">{{ s.first_name }} {{ s.last_name or '' }}</td>
+          <td><span class="text-mono" style="font-size:0.82rem;">{{ s.employee_id }}</span></td>
+          <td><span class="badge badge-primary">{{ s.staff_type | replace('_',' ') | title }}</span></td>
+          <td style="font-size:0.85rem;">{{ s.block_name or 'All Blocks' }}</td>
+          <td><span class="badge badge-muted">{{ s.shift | title if s.shift else '—' }}</span></td>
+          <td style="font-size:0.85rem;">{{ s.phone_number or '—' }}</td>
+          <td style="font-size:0.85rem;">₹{{ "%.0f"|format(s.salary) if s.salary else '—' }}/mo</td>
+          <td>
+            <span class="badge badge-{{ 'success' if s.status == 'ACTIVE' else 'warning' if s.status == 'ON_LEAVE' else 'muted' }}">
+              {{ s.status | replace('_',' ') | title }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-id-badge"></i></div>
+      <h3>No Staff Found</h3>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

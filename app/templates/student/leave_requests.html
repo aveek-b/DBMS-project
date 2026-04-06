@@ -24,7 +24,7 @@
 
 <div class="card">
   <div class="table-wrap">
-    {% if leaves %}
+    {% if leave_requests %}
     <table>
       <thead>
         <tr>
@@ -39,7 +39,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for lr in leaves %}
+        {% for lr in leave_requests %}
         <tr>
           <td><span style="font-family:var(--font-mono); font-size:0.8rem; color:var(--primary); font-weight:600;">{{ lr.leave_number }}</span></td>
           <td><span class="badge badge-primary">{{ lr.leave_type | replace('_',' ') | title }}</span></td>

@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% block title %}Allocate Room — HMS Portal{% endblock %}
+{% block page_title %}Allocate Room{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Room Allocation</h1>
+      <p>Assign a room and optional roommates for the selected student.</p>
+    </div>
+    <a href="{{ url_for('admin.students') }}" class="btn btn-outline">
+      <i class="fas fa-arrow-left"></i> Back to Students
+    </a>
+  </div>
+</div>
+
+<!-- Student Summary Card -->
+<div class="card mb-3">
+  <div class="card-body" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+    <div style="width:52px; height:52px; border-radius:50%; background:var(--accent-light);
+                display:flex; align-items:center; justify-content:center;
+                font-size:1.1rem; font-weight:700; color:var(--accent-dark); flex-shrink:0;">
+      {{ student.first_name[0] }}{{ (student.last_name or '?')[0] }}
+    </div>
+    <div style="flex:1;">
+      <div style="font-family:var(--font-display); font-size:1.15rem; font-weight:700;">
+        {{ student.first_name }} {{ student.last_name or '' }}
+      </div>
+      <div style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono);">
+        {{ student.roll_number }}
+      </div>
+    </div>
+    <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+      <span class="badge badge-muted">{{ student.course }}</span>
+      <span class="badge badge-muted">{{ student.branch }}</span>
+      <span class="badge badge-muted">Year {{ student.year_of_study }}</span>
+      <span class="badge badge-{{ 'primary' if student.gender == 'MALE' else 'accent' if student.gender == 'FEMALE' else 'muted' }}">
+        {{ student.gender or 'Gender N/A' }}
+      </span>
+      <span class="badge badge-{{ 'success' if student.compatibility_completed == 'Y' else 'muted' }}">
+        Quiz {{ 'Done' if student.compatibility_completed == 'Y' else 'Not Done' }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Step 1: Pick a Room -->
+<div class="card mb-3">
+  <div class="card-body">
+    <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.875rem;">
+      <span style="display:inline-flex; align-items:center; justify-content:center;
+                   width:24px; height:24px; background:var(--primary); color:#fff;
+                   border-radius:50%; font-size:0.75rem; margin-right:0.5rem; font-weight:700;">1</span>
+      Select a Room
+    </div>
+    <form method="GET" style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
+      <div style="flex:1; min-width:260px;">
+        <label class="form-label" style="font-size:0.8rem;">Available Room</label>
+        <select name="room_id" id="roomSelect" class="form-control" required>
+          <option value="">Choose a room…</option>
+          {% for r in available_rooms %}
+          <option value="{{ r.room_id }}" {{ 'selected' if selected_room_id == r.room_id }}>
+            {{ r.room_number }} — {{ r.block_name }}
+            ({{ r.available_beds }} bed{{ 's' if r.available_beds != 1 }} free · {{ r.room_type | title }}
+            {%- if r.ac_available == 'Y' %} · AC{% endif %}
+            {%- if r.attached_bathroom == 'Y' %} · Attached Bath{% endif %}
+            · ₹{{ "%.0f"|format(r.rent_amount) }}/mo)
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-search"></i> Load Candidates
+      </button>
+      {% if selected_room_id %}
+      <a href="{{ url_for('admin.allocate_student', student_id=student.student_id) }}" class="btn btn-outline">
+        Clear
+      </a>
+      {% endif %}
+    </form>
+
+    {% if not available_rooms %}
+    <p style="margin-top:0.75rem; font-size:0.82rem; color:var(--danger);">
+      <i class="fas fa-exclamation-triangle"></i>
+      No available rooms found for this student's gender ({{ student.gender or 'unknown' }}).
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+{% if selected_room %}
+
+<!-- Room Details -->
+<div class="card mb-3" style="border-left:4px solid var(--primary);">
+  <div class="card-body">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.75rem;">
+      <div>
+        <div style="font-family:var(--font-display); font-size:1.1rem; font-weight:700;">
+          Room {{ selected_room.room_number }}
+          <span style="font-size:0.78rem; font-weight:400; color:var(--text-muted); margin-left:0.5rem;">{{ selected_room.block_name }}</span>
+        </div>
+        <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;">
+          Floor {{ selected_room.floor_number }} &bull; {{ selected_room.room_type | title }}
+          {% if selected_room.ac_available == 'Y' %}&bull; AC{% endif %}
+          {% if selected_room.attached_bathroom == 'Y' %}&bull; Attached Bath{% endif %}
+          &bull; ₹{{ "%.0f"|format(selected_room.rent_amount) }}/month
+        </div>
+      </div>
+      <div style="display:flex; gap:1.5rem; text-align:center;">
+        <div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--text);">{{ selected_room.capacity }}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">Capacity</div>
+        </div>
+        <div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--text);">{{ selected_room.current_occupancy }}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">Occupied</div>
+        </div>
+        <div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--success);">{{ selected_room.available_beds }}</div>
+          <div style="font-size:0.7rem; color:var(--text-muted);">Free Beds</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 2: Roommates + Confirm -->
+<form method="POST" action="{{ url_for('admin.allocate_student', student_id=student.student_id) }}" id="allocForm">
+  <input type="hidden" name="room_id" value="{{ selected_room.room_id }}">
+
+  {% set max_roommates = selected_room.available_beds - 1 %}
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.875rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center;
+                     width:24px; height:24px; background:var(--primary); color:#fff;
+                     border-radius:50%; font-size:0.75rem; margin-right:0.5rem; font-weight:700;">2</span>
+        Select Roommates
+        <span style="font-size:0.78rem; font-weight:400; color:var(--text-muted); margin-left:0.5rem;">
+          (optional — up to {{ max_roommates }} more student{{ 's' if max_roommates != 1 }})
+        </span>
+      </div>
+
+      {% if not candidates %}
+      <div class="empty-state" style="padding:1.5rem 0;">
+        <div class="empty-state-icon" style="font-size:2rem;"><i class="fas fa-users-slash"></i></div>
+        <p style="margin:0; font-size:0.85rem;">No other unallocated students are eligible for this room.</p>
+      </div>
+
+      {% else %}
+
+      {% if student.compatibility_completed != 'Y' %}
+      <div class="alert alert-warning" style="margin-bottom:1rem; font-size:0.82rem;">
+        <i class="fas fa-exclamation-triangle"></i>
+        This student hasn't completed the compatibility quiz — scores shown below are calculated against their partners only.
+        Unmatched pairs show N/A.
+      </div>
+      {% endif %}
+
+      <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        <i class="fas fa-info-circle"></i>
+        Compatibility is calculated against <strong>{{ student.first_name }}</strong>.
+        Select up to <strong>{{ max_roommates }}</strong> student{{ 's' if max_roommates != 1 }} to co-allocate to this room.
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px; text-align:center;">
+                <input type="checkbox" id="selectAll" title="Select all (up to limit)">
+              </th>
+              <th>Student</th>
+              <th>Roll No.</th>
+              <th>Course / Branch</th>
+              <th>Year</th>
+              <th style="text-align:center;">Quiz</th>
+              <th style="text-align:center; min-width:160px;">Compatibility</th>
+              <th style="text-align:center; min-width:80px;">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in candidates %}
+            {% set score = c.compatibility_score %}
+            {% set cat = c.category_info %}
+            {% set has_score = score >= 0 %}
+            <tr class="candidate-row" data-score="{{ score }}">
+              <td style="text-align:center;">
+                <input type="checkbox" name="roommate_ids" value="{{ c.student_id }}"
+                       class="roommate-cb" {{ 'disabled' if max_roommates == 0 }}>
+              </td>
+              <td>
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                  <div style="width:30px; height:30px; border-radius:50%; background:var(--accent-light);
+                              display:flex; align-items:center; justify-content:center;
+                              font-size:0.75rem; font-weight:700; color:var(--accent-dark); flex-shrink:0;">
+                    {{ c.first_name[0] }}{{ (c.last_name or '?')[0] }}
+                  </div>
+                  <div>
+                    <div style="font-weight:500; font-size:0.85rem;">{{ c.full_name }}</div>
+                    <div style="font-size:0.72rem; color:var(--text-muted);">{{ c.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span style="font-family:var(--font-mono); font-size:0.8rem;">{{ c.roll_number }}</span></td>
+              <td style="font-size:0.82rem;">{{ c.course }}<br><span style="color:var(--text-muted);">{{ c.branch }}</span></td>
+              <td style="text-align:center; font-size:0.82rem;">{{ c.year_of_study }}</td>
+              <td style="text-align:center;">
+                {% if c.compatibility_completed == 'Y' %}
+                <span class="badge badge-success" title="Quiz completed"><i class="fas fa-check"></i></span>
+                {% else %}
+                <span class="badge badge-muted" title="Quiz not done"><i class="fas fa-minus"></i></span>
+                {% endif %}
+              </td>
+              <td style="text-align:center;">
+                {% if has_score %}
+                <div class="occ-bar" style="height:8px; margin-bottom:0.3rem;">
+                  <div style="width:{{ score }}%; height:100%; border-radius:99px;
+                              background:{{ 'var(--success)' if score >= 85 else 'var(--primary)' if score >= 70 else 'var(--warning)' if score >= 50 else 'var(--danger)' }};"></div>
+                </div>
+                <span class="badge badge-{{ cat.color }}" style="font-size:0.68rem;">{{ cat.category }}</span>
+                {% else %}
+                <span style="font-size:0.78rem; color:var(--text-muted);">N/A — quiz incomplete</span>
+                {% endif %}
+              </td>
+              <td style="text-align:center;">
+                {% if has_score %}
+                <span style="font-family:var(--font-display); font-weight:700; font-size:1rem;
+                             color:{{ 'var(--success)' if score >= 85 else 'var(--primary)' if score >= 70 else 'var(--warning)' if score >= 50 else 'var(--danger)' }};">
+                  {{ "%.0f"|format(score) }}%
+                </span>
+                {% else %}
+                <span style="color:var(--text-muted);">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div id="selectionInfo" style="margin-top:0.75rem; font-size:0.82rem; color:var(--text-muted);"></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Step 3: Confirm -->
+  <div class="card">
+    <div class="card-body">
+      <div style="font-weight:600; font-size:0.95rem; margin-bottom:0.875rem;">
+        <span style="display:inline-flex; align-items:center; justify-content:center;
+                     width:24px; height:24px; background:var(--primary); color:#fff;
+                     border-radius:50%; font-size:0.75rem; margin-right:0.5rem; font-weight:700;">3</span>
+        Confirm Allocation
+      </div>
+      <div class="form-group" style="max-width:480px;">
+        <label class="form-label">Remarks <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label>
+        <input type="text" name="remarks" class="form-control" placeholder="e.g. Admin assigned, special request…">
+      </div>
+      <div id="confirmSummary" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+        Allocating <strong>{{ student.first_name }} {{ student.last_name or '' }}</strong>
+        to Room <strong>{{ selected_room.room_number }}</strong> ({{ selected_room.block_name }}).
+      </div>
+      <div style="display:flex; gap:1rem;">
+        <a href="{{ url_for('admin.students') }}" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-lg" id="confirmBtn">
+          <i class="fas fa-check-circle"></i>
+          <span id="confirmBtnText">Confirm Allocation</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% elif selected_room_id %}
+<div class="card">
+  <div class="card-body">
+    <div class="empty-state" style="padding:2rem 0;">
+      <div class="empty-state-icon"><i class="fas fa-door-open"></i></div>
+      <h3>Room Not Available</h3>
+      <p>The selected room has no free beds or could not be found.</p>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const maxRoommates = {{ selected_room.available_beds - 1 if selected_room else 0 }};
+  const checkboxes = document.querySelectorAll('.roommate-cb');
+  const selectAll = document.getElementById('selectAll');
+  const info = document.getElementById('selectionInfo');
+  const summary = document.getElementById('confirmSummary');
+  const primaryName = "{{ student.first_name }} {{ student.last_name or '' }}";
+  const roomLabel = "{{ selected_room.room_number ~ ' (' ~ selected_room.block_name ~ ')' if selected_room else '' }}";
+
+  function countChecked() {
+    return [...checkboxes].filter(c => c.checked).length;
+  }
+
+  function updateInfo() {
+    if (!info) return;
+    const n = countChecked();
+    if (n === 0) {
+      info.textContent = 'No roommates selected — only the primary student will be allocated.';
+    } else {
+      info.textContent = `${n} roommate${n > 1 ? 's' : ''} selected (${maxRoommates - n} slot${maxRoommates - n !== 1 ? 's' : ''} remaining).`;
+    }
+    // update confirm summary
+    if (summary) {
+      const names = [...checkboxes]
+        .filter(c => c.checked)
+        .map(c => c.closest('tr').querySelector('td:nth-child(2) .name, td:nth-child(2) div > div:first-child').textContent.trim());
+      const roommateText = n > 0 ? ` along with ${n} roommate${n > 1 ? 's' : ''}` : '';
+      summary.innerHTML = `Allocating <strong>${primaryName}</strong>${roommateText} to Room <strong>${roomLabel}</strong>.`;
+    }
+  }
+
+  checkboxes.forEach(cb => {
+    cb.addEventListener('change', function () {
+      if (this.checked && countChecked() > maxRoommates) {
+        this.checked = false;
+        return;
+      }
+      updateInfo();
+    });
+  });
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function () {
+      let count = 0;
+      checkboxes.forEach(cb => {
+        if (this.checked && count < maxRoommates) {
+          cb.checked = true;
+          count++;
+        } else if (!this.checked) {
+          cb.checked = false;
+        }
+      });
+      updateInfo();
+    });
+  }
+
+  updateInfo();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Rooms — HMS Portal{% endblock %}
+{% block page_title %}Rooms{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Room Management</h1>
+      <p>View and manage all hostel rooms across all blocks.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-3">
+  <div class="card-body" style="padding:1rem 1.5rem;">
+    <form method="GET" style="display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+      <select name="block_id" class="form-control" style="max-width:200px;">
+        <option value="">All Blocks</option>
+        {% for block in blocks %}
+        <option value="{{ block.block_id }}" {{ 'selected' if request.args.get('block_id')|int == block.block_id }}>
+          {{ block.block_name }}
+        </option>
+        {% endfor %}
+      </select>
+      <select name="status" class="form-control" style="max-width:160px;">
+        <option value="">All Status</option>
+        <option value="AVAILABLE" {{ 'selected' if request.args.get('status')=='AVAILABLE' }}>Available</option>
+        <option value="OCCUPIED" {{ 'selected' if request.args.get('status')=='OCCUPIED' }}>Occupied</option>
+        <option value="FULL" {{ 'selected' if request.args.get('status')=='FULL' }}>Full</option>
+        <option value="MAINTENANCE" {{ 'selected' if request.args.get('status')=='MAINTENANCE' }}>Maintenance</option>
+      </select>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filter</button>
+      <a href="{{ url_for('admin.rooms') }}" class="btn btn-outline">Clear</a>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if rooms %}
+    <table>
+      <thead>
+        <tr>
+          <th>Room</th>
+          <th>Block</th>
+          <th>Floor</th>
+          <th>Type</th>
+          <th>Capacity</th>
+          <th>Occupied</th>
+          <th>Available</th>
+          <th>Rent</th>
+          <th>Amenities</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rooms %}
+        {% set pct = (r.current_occupancy / r.capacity * 100) if r.capacity > 0 else 0 %}
+        <tr>
+          <td style="font-family:var(--font-display); font-weight:700; font-size:1rem;">{{ r.room_number }}</td>
+          <td style="font-size:0.85rem;">{{ r.block_name }}</td>
+          <td style="text-align:center;">{{ r.floor_number }}</td>
+          <td><span class="badge badge-muted">{{ r.room_type | title }}</span></td>
+          <td style="text-align:center; font-weight:600;">{{ r.capacity }}</td>
+          <td style="text-align:center;">
+            <div>{{ r.current_occupancy }}</div>
+            <div class="occ-bar" style="width:50px;">
+              <div class="occ-fill {{ 'high' if pct >= 100 else 'medium' if pct > 60 else '' }}" style="width:{{ pct }}%;"></div>
+            </div>
+          </td>
+          <td style="text-align:center; font-weight:600; color:{{ 'var(--success)' if r.available_beds > 0 else 'var(--danger)' }};">
+            {{ r.available_beds }}
+          </td>
+          <td style="font-size:0.85rem;">₹{{ "%.0f"|format(r.rent_amount) }}/mo</td>
+          <td>
+            {% if r.ac_available == 'Y' %}<span class="badge badge-info" style="margin-right:0.3rem;">AC</span>{% endif %}
+            {% if r.attached_bathroom == 'Y' %}<span class="badge badge-muted">Attached Bath</span>{% endif %}
+          </td>
+          <td>
+            <span class="badge badge-{{ 'success' if r.status == 'AVAILABLE' else 'warning' if r.status == 'OCCUPIED' else 'danger' if r.status in ['FULL','MAINTENANCE'] else 'muted' }}">
+              {{ r.status | title }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-door-open"></i></div>
+      <h3>No Rooms Found</h3>
+      <p>No rooms match the selected filters.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
