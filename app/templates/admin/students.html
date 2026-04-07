@@ -9,6 +9,9 @@
       <h1>All Students</h1>
       <p>Manage all registered students in the system.</p>
     </div>
+    <a href="{{ url_for('admin.allocation_queue') }}" class="btn btn-primary">
+      <i class="fas fa-sort-amount-down"></i> Allocation Queue
+    </a>
   </div>
 </div>
 
@@ -40,6 +43,7 @@
           <th>Student</th>
           <th>Roll No.</th>
           <th>Course / Branch</th>
+          <th style="text-align:center;">CGPA</th>
           <th>Room</th>
           <th>Block</th>
           <th>Phone</th>
@@ -63,6 +67,27 @@
           </td>
           <td><span class="text-mono" style="font-size:0.82rem;">{{ s.roll_number }}</span></td>
           <td style="font-size:0.82rem;">{{ s.course }}<br><span style="color:var(--text-muted);">{{ s.branch }}</span></td>
+          <td style="text-align:center;">
+            <div style="display:inline-flex; align-items:center; gap:0.3rem;">
+              {% if s.cgpa is not none %}
+                {% if s.cgpa >= 8 %}{% set cgpa_cls = 'badge-success' %}
+                {% elif s.cgpa >= 6 %}{% set cgpa_cls = 'badge-primary' %}
+                {% else %}{% set cgpa_cls = 'badge-warning' %}{% endif %}
+                <span class="badge {{ cgpa_cls }}" style="font-family:var(--font-display); font-size:0.82rem;">
+                  {{ '%.2f'|format(s.cgpa) }}
+                </span>
+              {% else %}
+                <span style="color:var(--text-muted); font-size:0.82rem;">—</span>
+              {% endif %}
+              <button class="btn btn-outline" style="padding:0.1rem 0.35rem; font-size:0.65rem; line-height:1.4;"
+                      data-sid="{{ s.student_id }}"
+                      data-name="{{ s.first_name }} {{ s.last_name or '' }}"
+                      data-cgpa="{{ '%.2f'|format(s.cgpa) if s.cgpa is not none else '' }}"
+                      onclick="openCgpa(this)" title="Edit CGPA">
+                <i class="fas fa-pencil-alt"></i>
+              </button>
+            </div>
+          </td>
           <td>{% if s.room_number %}<span class="badge badge-primary">{{ s.room_number }}</span>{% else %}<span style="color:var(--text-muted);">—</span>{% endif %}</td>
           <td style="font-size:0.82rem;">{{ s.block_name or '—' }}</td>
           <td style="font-size:0.82rem;">{{ s.phone_number or '—' }}</td>
@@ -99,6 +124,34 @@
   </div>
 </div>
 
+<!-- CGPA Edit Modal -->
+<div class="modal-overlay" id="cgpaModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">Update CGPA</span>
+      <button class="modal-close" onclick="closeModal('cgpaModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.update_cgpa') }}">
+      <div class="modal-body">
+        <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:1rem;">
+          Student: <strong id="cgpaStudentName"></strong>
+        </p>
+        <input type="hidden" name="student_id" id="cgpaStudentId">
+        <div class="form-group">
+          <label class="form-label">CGPA <span style="color:var(--text-muted); font-weight:400;">(0.00 – 10.00)</span></label>
+          <input type="number" name="cgpa" id="cgpaValue"
+                 step="0.01" min="0" max="10" class="form-control" required
+                 placeholder="e.g. 8.45">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('cgpaModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Deallocate Modal -->
 <div class="modal-overlay" id="deallocateModal">
   <div class="modal">
@@ -128,6 +181,12 @@
 
 {% block scripts %}
 <script>
+function openCgpa(btn) {
+  document.getElementById('cgpaStudentId').value = btn.dataset.sid;
+  document.getElementById('cgpaStudentName').textContent = btn.dataset.name;
+  document.getElementById('cgpaValue').value = btn.dataset.cgpa;
+  document.getElementById('cgpaModal').classList.add('active');
+}
 function openDeallocate(btn) {
   document.getElementById('deallocateStudentId').value = btn.dataset.sid;
   document.getElementById('deallocateStudentName').textContent = btn.dataset.name;

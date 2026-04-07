@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Announcements — HMS Portal{% endblock %}
+{% block page_title %}Announcements{% endblock %}
+
+{% block content %}
+
+{# ---- shared form fields macro (must be inside a block to be usable) ---- #}
+{% macro announcement_form_fields(blocks, a=None) %}
+<div style="display:grid; gap:1rem;">
+  <div>
+    <label class="form-label">Title <span style="color:var(--danger);">*</span></label>
+    <input type="text" name="title" class="form-control"
+           value="{{ a.title if a else '' }}" required maxlength="200"
+           placeholder="Announcement title">
+  </div>
+  <div>
+    <label class="form-label">Content <span style="color:var(--danger);">*</span></label>
+    <textarea name="content" class="form-control" rows="4" required
+              placeholder="Write the full announcement here…">{{ a.content if a else '' }}</textarea>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+    <div>
+      <label class="form-label">Type</label>
+      <select name="announcement_type" class="form-control">
+        {% for t in ['GENERAL','URGENT','MAINTENANCE','EVENT','ACADEMIC','MESS'] %}
+        <option value="{{ t }}" {{ 'selected' if a and a.announcement_type == t }}>{{ t | title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Priority</label>
+      <select name="priority" class="form-control">
+        {% for p in ['LOW','NORMAL','HIGH','CRITICAL'] %}
+        <option value="{{ p }}" {{ 'selected' if a and a.priority == p else ('selected' if not a and p == 'NORMAL') }}>{{ p | title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+    <div>
+      <label class="form-label">Target Audience</label>
+      <select name="target_audience" class="form-control" onchange="toggleBlockSelect(this)">
+        {% for aud in ['ALL','STUDENTS','WARDENS','STAFF','SPECIFIC_BLOCK'] %}
+        <option value="{{ aud }}" {{ 'selected' if a and a.target_audience == aud }}>{{ aud | replace('_', ' ') | title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="block-select-wrap" style="{{ '' if a and a.target_audience == 'SPECIFIC_BLOCK' else 'display:none;' }}">
+      <label class="form-label">Target Block</label>
+      <select name="target_block_id" class="form-control">
+        <option value="">— Select Block —</option>
+        {% for b in blocks %}
+        <option value="{{ b.block_id }}" {{ 'selected' if a and a.target_block_id == b.block_id }}>{{ b.block_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+    <div>
+      <label class="form-label">Start Date <span style="color:var(--danger);">*</span></label>
+      <input type="date" name="start_date" class="form-control" required
+             value="{{ a.start_date.strftime('%Y-%m-%d') if a and a.start_date else '' }}">
+    </div>
+    <div>
+      <label class="form-label">End Date <span style="color:var(--text-muted);">(optional)</span></label>
+      <input type="date" name="end_date" class="form-control"
+             value="{{ a.end_date.strftime('%Y-%m-%d') if a and a.end_date else '' }}">
+    </div>
+  </div>
+  <div style="display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap;">
+    <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.88rem;">
+      <input type="checkbox" name="is_pinned" value="1"
+             {{ 'checked' if a and a.is_pinned == 'Y' }}>
+      <i class="fas fa-thumbtack" style="color:var(--accent);"></i> Pin this announcement
+    </label>
+    {% if a %}
+    <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.88rem;">
+      <input type="checkbox" name="is_active" value="Y"
+             {{ 'checked' if a.is_active == 'Y' }}>
+      Active (visible to recipients)
+    </label>
+    {% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Announcements</h1>
+      <p>Create and manage hostel announcements for students, wardens, and staff.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('createModal')">
+      <i class="fas fa-plus"></i> New Announcement
+    </button>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:1.25rem;">
+  <div class="card-body" style="padding:0.875rem 1.25rem;">
+    <form method="GET" action="{{ url_for('admin.announcements') }}"
+          style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+      <div>
+        <label class="form-label" style="font-size:0.72rem;">Type</label>
+        <select name="type" class="form-control" style="min-width:130px;">
+          <option value="">All Types</option>
+          {% for t in ['GENERAL','URGENT','MAINTENANCE','EVENT','ACADEMIC','MESS'] %}
+          <option value="{{ t }}" {{ 'selected' if filter_type == t }}>{{ t | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:0.72rem;">Audience</label>
+        <select name="audience" class="form-control" style="min-width:140px;">
+          <option value="">All Audiences</option>
+          {% for a in ['ALL','STUDENTS','WARDENS','STAFF','SPECIFIC_BLOCK'] %}
+          <option value="{{ a }}" {{ 'selected' if filter_audience == a }}>{{ a | replace('_', ' ') | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" style="font-size:0.72rem;">Status</label>
+        <select name="active" class="form-control" style="min-width:110px;">
+          <option value="">All</option>
+          <option value="Y" {{ 'selected' if filter_active == 'Y' }}>Active</option>
+          <option value="N" {{ 'selected' if filter_active == 'N' }}>Inactive</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">Filter</button>
+      {% if filter_type or filter_audience or filter_active %}
+      <a href="{{ url_for('admin.announcements') }}" class="btn btn-outline btn-sm">Clear</a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+<!-- Announcements Table -->
+<div class="card">
+  <div class="card-body" style="padding:0;">
+    {% if announcements %}
+    <div style="overflow-x:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Audience</th>
+            <th>Priority</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Status</th>
+            <th>Created By</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in announcements %}
+          <tr>
+            <td>
+              {% if a.is_pinned == 'Y' %}
+              <i class="fas fa-thumbtack" style="color:var(--accent); margin-right:0.35rem; font-size:0.75rem;"></i>
+              {% endif %}
+              <span style="font-weight:600;">{{ a.title }}</span>
+            </td>
+            <td>
+              <span class="badge badge-{{ 'danger' if a.announcement_type == 'URGENT' else 'warning' if a.announcement_type == 'MAINTENANCE' else 'primary' if a.announcement_type == 'EVENT' else 'muted' }}">
+                {{ a.announcement_type | title }}
+              </span>
+            </td>
+            <td style="font-size:0.82rem;">{{ a.target_audience | replace('_', ' ') | title }}
+              {% if a.target_block_name %}<br><span style="color:var(--text-muted); font-size:0.72rem;">{{ a.target_block_name }}</span>{% endif %}
+            </td>
+            <td>
+              <span class="badge badge-{{ 'danger' if a.priority == 'CRITICAL' else 'warning' if a.priority == 'HIGH' else 'muted' if a.priority == 'LOW' else 'primary' }}">
+                {{ a.priority | title }}
+              </span>
+            </td>
+            <td style="font-size:0.82rem;">{{ a.start_date.strftime('%d %b %Y') if a.start_date else '—' }}</td>
+            <td style="font-size:0.82rem;">{{ a.end_date.strftime('%d %b %Y') if a.end_date else '—' }}</td>
+            <td>
+              <span class="badge badge-{{ 'success' if a.is_active == 'Y' else 'muted' }}">
+                {{ 'Active' if a.is_active == 'Y' else 'Inactive' }}
+              </span>
+            </td>
+            <td style="font-size:0.82rem;">{{ a.created_by_name or '—' }}</td>
+            <td style="text-align:right; white-space:nowrap;">
+              <button class="btn btn-outline btn-sm"
+                      onclick="openEditModal({{ a | tojson }})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <form method="POST"
+                    action="{{ url_for('admin.delete_announcement_route', announcement_id=a.announcement_id) }}"
+                    style="display:inline;"
+                    onsubmit="return confirm('Delete this announcement?');">
+                <button type="submit" class="btn btn-sm" style="background:var(--danger); color:#fff;">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-bullhorn"></i></div>
+      <h3>No Announcements Found</h3>
+      <p>Create your first announcement to notify students, wardens, or staff.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ===================== CREATE MODAL ===================== -->
+<div id="createModal" class="modal-overlay" style="display:none;" onclick="closeOnOverlay(event,'createModal')">
+  <div class="modal" style="max-width:600px; width:95%;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-bullhorn"></i> New Announcement</h3>
+      <button class="modal-close" onclick="closeModal('createModal')">&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.create_announcement_route') }}">
+      <div class="modal-body">
+        {{ announcement_form_fields(blocks) }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('createModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Publish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== EDIT MODAL ===================== -->
+<div id="editModal" class="modal-overlay" style="display:none;" onclick="closeOnOverlay(event,'editModal')">
+  <div class="modal" style="max-width:600px; width:95%;">
+    <div class="modal-header">
+      <h3 class="modal-title"><i class="fas fa-edit"></i> Edit Announcement</h3>
+      <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+    </div>
+    <form id="editForm" method="POST" action="">
+      <div class="modal-body" id="editModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openModal(id) {
+  document.getElementById(id).style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+  document.body.style.overflow = '';
+}
+function closeOnOverlay(e, id) {
+  if (e.target === document.getElementById(id)) closeModal(id);
+}
+
+function toggleBlockSelect(sel) {
+  const wrap = sel.closest('.modal-body').querySelector('.block-select-wrap');
+  if (wrap) wrap.style.display = sel.value === 'SPECIFIC_BLOCK' ? '' : 'none';
+}
+
+function openEditModal(a) {
+  const form = document.getElementById('editForm');
+  form.action = '/admin/announcements/' + a.announcement_id + '/edit';
+
+  const body = document.getElementById('editModalBody');
+
+  const startDate = a.start_date ? a.start_date.split('T')[0] : '';
+  const endDate   = a.end_date   ? a.end_date.split('T')[0]   : '';
+
+  const typeOptions = ['GENERAL','URGENT','MAINTENANCE','EVENT','ACADEMIC','MESS']
+    .map(t => `<option value="${t}" ${a.announcement_type===t?'selected':''}>${cap(t)}</option>`).join('');
+
+  const priorityOptions = ['LOW','NORMAL','HIGH','CRITICAL']
+    .map(p => `<option value="${p}" ${a.priority===p?'selected':''}>${cap(p)}</option>`).join('');
+
+  const audienceOptions = ['ALL','STUDENTS','WARDENS','STAFF','SPECIFIC_BLOCK']
+    .map(aud => `<option value="${aud}" ${a.target_audience===aud?'selected':''}>${aud.replace(/_/g,' ')}</option>`).join('');
+
+  const blockOptions = {{ blocks | tojson }}.map(b =>
+    `<option value="${b.block_id}" ${a.target_block_id==b.block_id?'selected':''}>${escHtml(b.block_name)}</option>`
+  ).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;gap:1rem;">
+      <div>
+        <label class="form-label">Title <span style="color:var(--danger);">*</span></label>
+        <input type="text" name="title" class="form-control" value="${escHtml(a.title)}" required maxlength="200">
+      </div>
+      <div>
+        <label class="form-label">Content <span style="color:var(--danger);">*</span></label>
+        <textarea name="content" class="form-control" rows="4" required>${escHtml(a.content || '')}</textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <label class="form-label">Type</label>
+          <select name="announcement_type" class="form-control">${typeOptions}</select>
+        </div>
+        <div>
+          <label class="form-label">Priority</label>
+          <select name="priority" class="form-control">${priorityOptions}</select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <label class="form-label">Target Audience</label>
+          <select name="target_audience" class="form-control" onchange="toggleBlockSelect(this)">${audienceOptions}</select>
+        </div>
+        <div class="block-select-wrap" style="${a.target_audience==='SPECIFIC_BLOCK'?'':'display:none;'}">
+          <label class="form-label">Target Block</label>
+          <select name="target_block_id" class="form-control">
+            <option value="">— Select Block —</option>
+            ${blockOptions}
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <label class="form-label">Start Date <span style="color:var(--danger);">*</span></label>
+          <input type="date" name="start_date" class="form-control" required value="${startDate}">
+        </div>
+        <div>
+          <label class="form-label">End Date</label>
+          <input type="date" name="end_date" class="form-control" value="${endDate}">
+        </div>
+      </div>
+      <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;">
+          <input type="checkbox" name="is_pinned" value="1" ${a.is_pinned==='Y'?'checked':''}>
+          <i class="fas fa-thumbtack" style="color:var(--accent);"></i> Pin this announcement
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.88rem;">
+          <input type="checkbox" name="is_active" value="Y" ${a.is_active==='Y'?'checked':''}>
+          Active (visible to recipients)
+        </label>
+      </div>
+    </div>`;
+
+  openModal('editModal');
+}
+
+function cap(s) { return s.charAt(0) + s.slice(1).toLowerCase(); }
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

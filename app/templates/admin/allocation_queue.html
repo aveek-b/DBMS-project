@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}Allocation Queue — HMS Portal{% endblock %}
+{% block page_title %}Room Allocation Queue{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Room Allocation Queue</h1>
+      <p>Pending students sorted by CGPA (highest first). Allocate rooms based on eligibility and preferences.</p>
+    </div>
+    <a href="{{ url_for('admin.students') }}" class="btn btn-outline">
+      <i class="fas fa-users"></i> All Students
+    </a>
+  </div>
+</div>
+
+<!-- Block CGPA Cutoff Summary -->
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:0.75rem; margin-bottom:1.5rem;">
+  {% for b in blocks %}
+  <div class="card" style="border-left:3px solid {{ 'var(--primary)' if b.block_type == 'MALE' else 'var(--accent)' if b.block_type == 'FEMALE' else 'var(--warning)' }};">
+    <div class="card-body" style="padding:0.875rem 1rem;">
+      <div style="font-weight:600; font-size:0.85rem;">{{ b.block_name }}</div>
+      <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:0.5rem;">
+        {{ b.block_type | title }}
+      </div>
+      <form method="POST" action="{{ url_for('admin.update_block_cutoff') }}"
+            style="display:flex; gap:0.4rem; align-items:center;">
+        <input type="hidden" name="block_id" value="{{ b.block_id }}">
+        <input type="number" name="cgpa_cutoff" step="0.01" min="0" max="10"
+               value="{{ '%.2f'|format(b.cgpa_cutoff or 0) }}"
+               class="form-control" style="width:70px; font-size:0.8rem; padding:0.25rem 0.4rem;"
+               title="Min CGPA to be eligible for this block (0 = open to all)">
+        <button type="submit" class="btn btn-primary" style="padding:0.25rem 0.6rem; font-size:0.75rem;">
+          Set
+        </button>
+      </form>
+      <div style="font-size:0.68rem; color:var(--text-muted); margin-top:0.3rem;">
+        Min CGPA (0 = open)
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Queue Table -->
+{% if not queue %}
+<div class="card">
+  <div class="empty-state" style="padding:3rem;">
+    <div class="empty-state-icon"><i class="fas fa-check-circle"></i></div>
+    <h3>No Pending Students</h3>
+    <p>All students have been allocated rooms.</p>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student</th>
+          <th>Roll No.</th>
+          <th>Course / Branch</th>
+          <th style="text-align:center;">CGPA</th>
+          <th>1st Choice</th>
+          <th>2nd Choice</th>
+          <th>3rd Choice</th>
+          <th style="text-align:center;">Quiz</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in queue %}
+        {% set cgpa = s.cgpa %}
+
+        {# Find the highest-ranked block the student qualifies for #}
+        {% set eligible_block_id = namespace(val=None) %}
+        {% set eligible_block_name = namespace(val='—') %}
+        {% for pref_block_id, pref_cutoff in [
+              (s.pref1_block_id, s.pref1_cutoff),
+              (s.pref2_block_id, s.pref2_cutoff),
+              (s.pref3_block_id, s.pref3_cutoff)
+           ] %}
+          {% if pref_block_id and eligible_block_id.val is none %}
+            {% if cgpa is none or (pref_cutoff or 0) == 0 or cgpa >= (pref_cutoff or 0) %}
+              {% set eligible_block_id.val = pref_block_id %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+
+        <tr>
+          <td style="color:var(--text-muted); font-size:0.8rem;">{{ loop.index }}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              <div style="width:32px; height:32px; border-radius:50%; background:var(--accent-light);
+                          display:flex; align-items:center; justify-content:center;
+                          font-size:0.78rem; font-weight:700; color:var(--accent-dark); flex-shrink:0;">
+                {{ s.first_name[0] }}{{ (s.last_name or '?')[0] }}
+              </div>
+              <div>
+                <div style="font-weight:500; font-size:0.85rem;">{{ s.full_name }}</div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">{{ s.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td><span style="font-family:var(--font-mono); font-size:0.8rem;">{{ s.roll_number }}</span></td>
+          <td style="font-size:0.82rem;">{{ s.course }}<br><span style="color:var(--text-muted);">{{ s.branch }}</span></td>
+
+          <!-- CGPA with inline edit -->
+          <td style="text-align:center;">
+            <div style="display:flex; align-items:center; gap:0.3rem; justify-content:center;">
+              {% if cgpa is not none %}
+                {% if cgpa >= 8 %}{% set cgpa_cls = 'badge-success' %}
+                {% elif cgpa >= 6 %}{% set cgpa_cls = 'badge-primary' %}
+                {% else %}{% set cgpa_cls = 'badge-warning' %}{% endif %}
+                <span class="badge {{ cgpa_cls }}" style="font-family:var(--font-display); font-size:0.82rem;">
+                  {{ '%.2f'|format(cgpa) }}
+                </span>
+              {% else %}
+                <span style="color:var(--text-muted);">—</span>
+              {% endif %}
+              <button class="btn btn-outline" style="padding:0.15rem 0.4rem; font-size:0.68rem;"
+                      onclick="openCgpa({{ s.student_id }}, '{{ s.full_name }}', '{{ '%.2f'|format(cgpa) if cgpa is not none else '' }}')"
+                      title="Edit CGPA">
+                <i class="fas fa-pencil-alt"></i>
+              </button>
+            </div>
+          </td>
+
+          <!-- Preference columns -->
+          {% for pref_name, pref_cutoff in [
+                (s.pref1_block_name, s.pref1_cutoff),
+                (s.pref2_block_name, s.pref2_cutoff),
+                (s.pref3_block_name, s.pref3_cutoff)
+             ] %}
+          <td style="font-size:0.78rem;">
+            {% if pref_name %}
+              {% set eligible = cgpa is none or (pref_cutoff or 0) == 0 or cgpa >= (pref_cutoff or 0) %}
+              <span class="badge badge-{{ 'success' if eligible else 'danger' }}"
+                    title="{{ 'Eligible (CGPA ≥ %.2f)'|format(pref_cutoff) if pref_cutoff else 'No cutoff' }}">
+                {{ pref_name }}
+              </span>
+              {% if pref_cutoff and pref_cutoff > 0 %}
+              <div style="font-size:0.65rem; color:var(--text-muted);">
+                min {{ '%.2f'|format(pref_cutoff) }}
+                {% if not eligible %}<span style="color:var(--danger);">✗</span>{% endif %}
+              </div>
+              {% endif %}
+            {% else %}
+              <span style="color:var(--text-muted);">—</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+
+          <td style="text-align:center;">
+            {% if s.compatibility_completed == 'Y' %}
+            <span class="badge badge-success"><i class="fas fa-check"></i></span>
+            {% else %}
+            <span class="badge badge-muted"><i class="fas fa-minus"></i></span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if eligible_block_id.val %}
+            <a href="{{ url_for('admin.allocate_student', student_id=s.student_id, block_id=eligible_block_id.val) }}"
+               class="btn btn-primary btn-sm">
+              <i class="fas fa-door-open"></i> Allocate
+            </a>
+            {% elif s.pref1_block_id %}
+            <a href="{{ url_for('admin.allocate_student', student_id=s.student_id) }}"
+               class="btn btn-outline btn-sm" title="No preferred block qualifies — pick any available room">
+              <i class="fas fa-door-open"></i> Allocate (override)
+            </a>
+            {% else %}
+            <a href="{{ url_for('admin.allocate_student', student_id=s.student_id) }}"
+               class="btn btn-outline btn-sm">
+              <i class="fas fa-door-open"></i> Allocate
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- CGPA Edit Modal -->
+<div class="modal-overlay" id="cgpaModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">Update CGPA</span>
+      <button class="modal-close" onclick="closeModal('cgpaModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('admin.update_cgpa') }}">
+      <div class="modal-body">
+        <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:1rem;">
+          Student: <strong id="cgpaStudentName"></strong>
+        </p>
+        <input type="hidden" name="student_id" id="cgpaStudentId">
+        <div class="form-group">
+          <label class="form-label">CGPA <span style="color:var(--text-muted); font-weight:400;">(0.00 – 10.00)</span></label>
+          <input type="number" name="cgpa" id="cgpaValue"
+                 step="0.01" min="0" max="10" class="form-control" required
+                 placeholder="e.g. 8.45">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('cgpaModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openCgpa(id, name, current) {
+  document.getElementById('cgpaStudentId').value = id;
+  document.getElementById('cgpaStudentName').textContent = name;
+  document.getElementById('cgpaValue').value = current;
+  document.getElementById('cgpaModal').classList.add('active');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+</script>
+{% endblock %}

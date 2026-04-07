@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Room Preferences — HMS Portal{% endblock %}
+{% block page_title %}Room Preferences{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Block Preferences</h1>
+      <p>Rank up to 3 hostel blocks you'd like to live in. Allocation is done by the admin based on your CGPA.</p>
+    </div>
+    {% if pref_map %}
+    <span class="badge badge-success" style="font-size:0.85rem; padding:0.4rem 0.75rem;">
+      <i class="fas fa-check-circle"></i> Preferences Saved
+    </span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- CGPA notice -->
+{% if student.cgpa is none or student.cgpa == '' %}
+<div class="alert alert-warning mb-3">
+  <i class="fas fa-exclamation-triangle"></i>
+  Your CGPA has not been recorded yet. The admin will update it — your preferences will still be saved and considered once CGPA is entered.
+</div>
+{% else %}
+<div class="alert alert-success mb-3" style="font-size:0.85rem;">
+  <i class="fas fa-graduation-cap"></i>
+  Your current CGPA: <strong>{{ '%.2f'|format(student.cgpa) }}</strong>.
+  Blocks with a minimum CGPA higher than yours are shown as ineligible.
+</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('student.room_preferences') }}">
+  <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+    {% for rank in [1, 2, 3] %}
+    {% set p = pref_map.get(rank) %}
+    <div class="card">
+      <div class="card-body">
+        <div style="display:flex; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+
+          <!-- Rank badge -->
+          <div style="width:36px; height:36px; border-radius:50%; flex-shrink:0;
+                      background:{{ 'var(--primary)' if rank == 1 else 'var(--accent-light)' }};
+                      display:flex; align-items:center; justify-content:center;
+                      font-weight:700; font-size:0.9rem;
+                      color:{{ '#fff' if rank == 1 else 'var(--accent-dark)' }};">
+            {{ rank }}
+          </div>
+
+          <div style="flex:1; min-width:220px;">
+            <label class="form-label" style="font-size:0.82rem;">
+              {{ 'First' if rank == 1 else 'Second' if rank == 2 else 'Third' }} Choice
+              {% if rank == 1 %}<span style="color:var(--danger);">*</span>{% endif %}
+            </label>
+            <select name="pref_{{ rank }}" class="form-control" style="font-size:0.85rem;"
+                    {{ 'required' if rank == 1 }}>
+              <option value="">— None —</option>
+              {% for b in eligible_blocks %}
+              {% set cgpa_ok = student.cgpa is none or (b.cgpa_cutoff or 0) == 0 or student.cgpa >= (b.cgpa_cutoff or 0) %}
+              <option value="{{ b.block_id }}"
+                      {{ 'selected' if p and p.block_id == b.block_id }}
+                      {{ 'disabled' if not cgpa_ok }}>
+                {{ b.block_name }}
+                ({{ b.block_type | title }})
+                {%- if b.cgpa_cutoff and b.cgpa_cutoff > 0 %} — min CGPA {{ '%.2f'|format(b.cgpa_cutoff) }}{% endif %}
+                {%- if not cgpa_ok %} ✗ ineligible{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div style="flex:1; min-width:220px;">
+            <label class="form-label" style="font-size:0.82rem;">Remarks
+              <span style="color:var(--text-muted); font-weight:400;">(optional)</span>
+            </label>
+            <input type="text" name="note_{{ rank }}" class="form-control"
+                   style="font-size:0.85rem;"
+                   placeholder="e.g. prefer ground floor, near library…"
+                   value="{{ p.notes if p and p.notes else '' }}">
+          </div>
+
+        </div>
+
+        <!-- Block details card (shown when a preference exists) -->
+        {% if p %}
+        <div style="margin-top:0.875rem; padding:0.75rem 1rem;
+                    background:var(--accent-light); border-radius:var(--radius-sm);
+                    font-size:0.8rem; color:var(--text-muted);">
+          <strong style="color:var(--text);">{{ p.block_name }}</strong>
+          &bull; {{ p.block_type | title }}
+          {% if p.cgpa_cutoff and p.cgpa_cutoff > 0 %}
+          &bull; Min CGPA: <strong>{{ '%.2f'|format(p.cgpa_cutoff) }}</strong>
+          {% else %}
+          &bull; <span style="color:var(--success);">Open to all</span>
+          {% endif %}
+          {% if p.available_beds is not none %}
+          &bull; {{ p.available_beds }} bed{{ 's' if p.available_beds != 1 }} available
+          {% endif %}
+          {% if p.facilities %}
+          <div style="margin-top:0.3rem;"><i class="fas fa-star" style="font-size:0.7rem;"></i> {{ p.facilities }}</div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+  <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem; padding-bottom:2rem;">
+    <a href="{{ url_for('student.dashboard') }}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-primary btn-lg">
+      <i class="fas fa-save"></i> Save Preferences
+    </button>
+  </div>
+</form>
+
+<div style="padding:1rem 1.25rem; background:var(--accent-light); border-radius:var(--radius);
+            border:1px solid var(--border); font-size:0.82rem; color:var(--text-muted);">
+  <i class="fas fa-info-circle" style="color:var(--accent-dark);"></i>
+  Preferences are used as a guide. Final block eligibility is determined by your CGPA against each block's cutoff.
+  The admin will allocate you to a specific room within your eligible block based on compatibility scores.
+</div>
+{% endblock %}

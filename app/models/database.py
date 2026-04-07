@@ -371,20 +371,22 @@ def get_all_rooms(block_id=None, status=None):
 
 def get_available_rooms(gender=None):
     """Get rooms with available beds."""
+    query = """
+        SELECT r.room_id, r.room_number, r.block_id, r.floor_number, r.room_type,
+               r.capacity, r.current_occupancy, r.rent_amount,
+               r.ac_available, r.attached_bathroom, r.amenities, r.status,
+               hb.block_name, hb.block_type,
+               r.capacity - r.current_occupancy AS available_beds
+        FROM rooms r
+        JOIN hostel_blocks hb ON r.block_id = hb.block_id
+        WHERE r.status IN ('AVAILABLE', 'OCCUPIED')
+        AND r.current_occupancy < r.capacity
+    """
     params = {}
     if gender:
-        query = """
-            SELECT r.*, hb.block_name, r.capacity - r.current_occupancy AS available_beds
-            FROM rooms r
-            JOIN hostel_blocks hb ON r.block_id = hb.block_id
-            WHERE r.status IN ('AVAILABLE', 'OCCUPIED')
-            AND r.current_occupancy < r.capacity
-            AND (hb.block_type = :gender OR hb.block_type = 'COED')
-            ORDER BY hb.block_name, r.room_number
-        """
+        query += " AND (hb.block_type = :gender OR hb.block_type = 'COED')"
         params['gender'] = gender
-    else:
-        query = "SELECT * FROM vw_room_availability WHERE available_beds > 0"
+    query += " ORDER BY hb.block_name, r.room_number"
     return execute_query(query, params)
 
 
@@ -619,6 +621,112 @@ def get_active_announcements(target_audience='ALL', block_id=None, limit=10):
     return execute_query(query, params)
 
 
+def get_all_announcements(is_active=None, announcement_type=None, target_audience=None):
+    """Get all announcements for admin management."""
+    query = """
+        SELECT a.*, u.first_name || ' ' || NVL(u.last_name, '') AS created_by_name,
+               hb.block_name AS target_block_name
+        FROM announcements a
+        LEFT JOIN users u ON a.created_by = u.user_id
+        LEFT JOIN hostel_blocks hb ON a.target_block_id = hb.block_id
+        WHERE 1=1
+    """
+    params = {}
+    if is_active is not None:
+        query += " AND a.is_active = :is_active"
+        params['is_active'] = 'Y' if is_active else 'N'
+    if announcement_type:
+        query += " AND a.announcement_type = :announcement_type"
+        params['announcement_type'] = announcement_type
+    if target_audience:
+        query += " AND a.target_audience = :target_audience"
+        params['target_audience'] = target_audience
+    query += " ORDER BY a.created_at DESC"
+    return execute_query(query, params)
+
+
+def get_announcement_by_id(announcement_id):
+    """Get a single announcement by ID."""
+    return execute_query("""
+        SELECT a.*, u.first_name || ' ' || NVL(u.last_name, '') AS created_by_name,
+               hb.block_name AS target_block_name
+        FROM announcements a
+        LEFT JOIN users u ON a.created_by = u.user_id
+        LEFT JOIN hostel_blocks hb ON a.target_block_id = hb.block_id
+        WHERE a.announcement_id = :announcement_id
+    """, {'announcement_id': announcement_id}, fetch='one')
+
+
+def create_announcement(title, content, announcement_type, target_audience,
+                        priority, start_date, end_date, is_pinned, created_by,
+                        target_block_id=None):
+    """Insert a new announcement."""
+    execute_dml("""
+        INSERT INTO announcements (
+            announcement_id, title, content, announcement_type, target_audience,
+            target_block_id, priority, start_date, end_date, is_pinned,
+            is_active, created_by, created_at, updated_at
+        ) VALUES (
+            seq_announcements.NEXTVAL, :title, :content, :announcement_type, :target_audience,
+            :target_block_id, :priority, TO_DATE(:start_date, 'YYYY-MM-DD'),
+            CASE WHEN :end_date IS NOT NULL THEN TO_DATE(:end_date, 'YYYY-MM-DD') ELSE NULL END,
+            :is_pinned, 'Y', :created_by, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    """, {
+        'title': title,
+        'content': content,
+        'announcement_type': announcement_type,
+        'target_audience': target_audience,
+        'target_block_id': target_block_id,
+        'priority': priority,
+        'start_date': start_date,
+        'end_date': end_date if end_date else None,
+        'is_pinned': is_pinned,
+        'created_by': created_by,
+    })
+
+
+def update_announcement(announcement_id, title, content, announcement_type,
+                        target_audience, priority, start_date, end_date,
+                        is_pinned, is_active, target_block_id=None):
+    """Update an existing announcement."""
+    execute_dml("""
+        UPDATE announcements SET
+            title = :title,
+            content = :content,
+            announcement_type = :announcement_type,
+            target_audience = :target_audience,
+            target_block_id = :target_block_id,
+            priority = :priority,
+            start_date = TO_DATE(:start_date, 'YYYY-MM-DD'),
+            end_date = CASE WHEN :end_date IS NOT NULL THEN TO_DATE(:end_date, 'YYYY-MM-DD') ELSE NULL END,
+            is_pinned = :is_pinned,
+            is_active = :is_active,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE announcement_id = :announcement_id
+    """, {
+        'announcement_id': announcement_id,
+        'title': title,
+        'content': content,
+        'announcement_type': announcement_type,
+        'target_audience': target_audience,
+        'target_block_id': target_block_id,
+        'priority': priority,
+        'start_date': start_date,
+        'end_date': end_date if end_date else None,
+        'is_pinned': is_pinned,
+        'is_active': is_active,
+    })
+
+
+def delete_announcement(announcement_id):
+    """Soft-delete an announcement by marking it inactive."""
+    execute_dml("""
+        UPDATE announcements SET is_active = 'N', updated_at = CURRENT_TIMESTAMP
+        WHERE announcement_id = :announcement_id
+    """, {'announcement_id': announcement_id})
+
+
 # ============================================
 # Compatibility Functions
 # ============================================
@@ -714,12 +822,20 @@ def get_room_by_id(room_id):
 
 
 def get_unallocated_students_for_room(room_id, exclude_student_id):
-    """Return PENDING students whose gender is eligible for the given room's block."""
+    """Return PENDING students eligible for the given room's block.
+    Includes cgpa and min_pref_rank (lowest preference rank where the student
+    listed this block; NULL means no preference for this block).
+    """
     query = """
         SELECT s.student_id, s.roll_number, s.course, s.branch,
                s.year_of_study, s.gender, s.compatibility_completed,
+               s.cgpa,
                u.first_name, u.last_name, u.email, u.phone_number,
-               u.first_name || ' ' || NVL(u.last_name, '') AS full_name
+               u.first_name || ' ' || NVL(u.last_name, '') AS full_name,
+               (SELECT MIN(rp.preference_rank)
+                FROM room_preferences rp
+                WHERE rp.student_id = s.student_id
+                  AND rp.block_id = hb.block_id) AS min_pref_rank
         FROM students s
         JOIN users u ON s.user_id = u.user_id
         JOIN rooms r ON r.room_id = :room_id
@@ -727,7 +843,6 @@ def get_unallocated_students_for_room(room_id, exclude_student_id):
         WHERE s.student_id != :exclude_id
         AND s.hostel_status = 'PENDING'
         AND (hb.block_type = 'COED' OR s.gender = hb.block_type)
-        ORDER BY s.roll_number
     """
     return execute_query(query, {'room_id': room_id, 'exclude_id': exclude_student_id})
 
@@ -966,3 +1081,141 @@ def get_complaint_statistics(days=30):
 def get_monthly_stats():
     """Get monthly statistics."""
     return execute_query("SELECT * FROM vw_monthly_analytics", fetch='one')
+
+
+# ============================================
+# Mess Menu Admin Functions
+# ============================================
+
+def upsert_mess_menu_item(day_of_week, meal_type, menu_items,
+                          timing_start, timing_end, special_diet=None, block_id=None):
+    """Insert or update a single mess menu row (global menu, block_id=NULL)."""
+    execute_dml("""
+        MERGE INTO mess_menu mm
+        USING dual
+        ON (
+            mm.day_of_week = :day_of_week
+            AND mm.meal_type = :meal_type
+            AND (mm.block_id IS NULL AND :block_id IS NULL
+                 OR mm.block_id = :block_id)
+        )
+        WHEN MATCHED THEN
+            UPDATE SET
+                menu_items   = :menu_items,
+                timing_start = :timing_start,
+                timing_end   = :timing_end,
+                special_diet = :special_diet,
+                is_active    = 'Y',
+                updated_at   = CURRENT_TIMESTAMP
+        WHEN NOT MATCHED THEN
+            INSERT (menu_id, day_of_week, meal_type, menu_items,
+                    timing_start, timing_end, special_diet, block_id, is_active, effective_date)
+            VALUES (seq_mess_menu.NEXTVAL, :day_of_week, :meal_type, :menu_items,
+                    :timing_start, :timing_end, :special_diet, :block_id, 'Y', SYSDATE)
+    """, {
+        'day_of_week': day_of_week,
+        'meal_type': meal_type,
+        'menu_items': menu_items,
+        'timing_start': timing_start,
+        'timing_end': timing_end,
+        'special_diet': special_diet or None,
+        'block_id': block_id,
+    })
+
+
+# ============================================
+# CGPA / Block Cutoff Functions
+# ============================================
+
+def update_student_cgpa(student_id, cgpa):
+    """Set or update CGPA for a student."""
+    execute_dml("""
+        UPDATE students SET cgpa = :cgpa, updated_at = CURRENT_TIMESTAMP
+        WHERE student_id = :student_id
+    """, {'student_id': student_id, 'cgpa': cgpa})
+
+
+def update_block_cgpa_cutoff(block_id, cgpa_cutoff):
+    """Set the minimum CGPA required to request a room in this block."""
+    execute_dml("""
+        UPDATE hostel_blocks SET cgpa_cutoff = :cutoff, updated_at = CURRENT_TIMESTAMP
+        WHERE block_id = :block_id
+    """, {'block_id': block_id, 'cutoff': cgpa_cutoff})
+
+
+# ============================================
+# Room Preference Functions
+# ============================================
+
+def get_student_room_preferences(student_id):
+    """Return the student's ranked block preferences with block details."""
+    return execute_query("""
+        SELECT rp.preference_id, rp.preference_rank, rp.notes,
+               hb.block_id, hb.block_name, hb.block_type,
+               hb.facilities, hb.cgpa_cutoff,
+               (SELECT NVL(SUM(r.capacity) - SUM(r.current_occupancy), 0)
+                FROM rooms r WHERE r.block_id = hb.block_id AND r.status != 'MAINTENANCE'
+               ) AS available_beds
+        FROM room_preferences rp
+        JOIN hostel_blocks hb ON rp.block_id = hb.block_id
+        WHERE rp.student_id = :student_id
+        ORDER BY rp.preference_rank
+    """, {'student_id': student_id})
+
+
+def save_student_room_preferences(student_id, ranked_block_ids, notes_list):
+    """Replace a student's preferences with a new ranked list (max 3)."""
+    # Delete existing
+    execute_dml("DELETE FROM room_preferences WHERE student_id = :sid", {'sid': student_id})
+    for rank, (block_id, note) in enumerate(zip(ranked_block_ids, notes_list), start=1):
+        if block_id:
+            execute_dml("""
+                INSERT INTO room_preferences
+                    (preference_id, student_id, block_id, preference_rank, notes, created_at, updated_at)
+                VALUES
+                    (seq_room_preferences.NEXTVAL, :sid, :bid, :rank, :note,
+                     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """, {'sid': student_id, 'bid': int(block_id), 'rank': rank, 'note': note or None})
+
+
+def get_allocation_queue():
+    """
+    All PENDING students ordered by CGPA DESC (nulls last), with their top
+    preferred block (highest rank they qualify for based on CGPA cutoff).
+    """
+    return execute_query("""
+        SELECT s.student_id,
+               s.roll_number,
+               s.course,
+               s.branch,
+               s.year_of_study,
+               s.gender,
+               s.cgpa,
+               s.compatibility_completed,
+               u.first_name,
+               u.last_name,
+               u.first_name || ' ' || NVL(u.last_name, '') AS full_name,
+               u.email,
+               -- Rank-1 preference
+               p1.block_id    AS pref1_block_id,
+               b1.block_name  AS pref1_block_name,
+               b1.cgpa_cutoff AS pref1_cutoff,
+               -- Rank-2 preference
+               p2.block_id    AS pref2_block_id,
+               b2.block_name  AS pref2_block_name,
+               b2.cgpa_cutoff AS pref2_cutoff,
+               -- Rank-3 preference
+               p3.block_id    AS pref3_block_id,
+               b3.block_name  AS pref3_block_name,
+               b3.cgpa_cutoff AS pref3_cutoff
+        FROM students s
+        JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN room_preferences p1 ON p1.student_id = s.student_id AND p1.preference_rank = 1
+        LEFT JOIN hostel_blocks b1   ON b1.block_id = p1.block_id
+        LEFT JOIN room_preferences p2 ON p2.student_id = s.student_id AND p2.preference_rank = 2
+        LEFT JOIN hostel_blocks b2   ON b2.block_id = p2.block_id
+        LEFT JOIN room_preferences p3 ON p3.student_id = s.student_id AND p3.preference_rank = 3
+        LEFT JOIN hostel_blocks b3   ON b3.block_id = p3.block_id
+        WHERE s.hostel_status = 'PENDING'
+        ORDER BY s.cgpa DESC NULLS LAST, s.roll_number
+    """)

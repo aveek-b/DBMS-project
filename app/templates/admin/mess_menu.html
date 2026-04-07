@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Mess Menu Editor — HMS Portal{% endblock %}
+{% block page_title %}Mess Menu{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Weekly Mess Menu</h1>
+      <p>Edit meal items, timings, and special diet notes for each day and meal slot.</p>
+    </div>
+    <a href="{{ url_for('student.mess_menu') }}" class="btn btn-outline" target="_blank">
+      <i class="fas fa-eye"></i> Preview (Student View)
+    </a>
+  </div>
+</div>
+
+{% set meal_icons = {'BREAKFAST':'☀️','LUNCH':'🍱','SNACKS':'🍵','DINNER':'🌙'} %}
+{% set meal_colors = {'BREAKFAST':'var(--accent)','LUNCH':'var(--primary)','SNACKS':'var(--warning)','DINNER':'var(--bg-sidebar)'} %}
+
+<form method="POST" action="{{ url_for('admin.mess_menu') }}">
+
+  <!-- Day tabs -->
+  <div class="tabs" id="dayTabs" style="margin-bottom:1.25rem;">
+    {% for day in days %}
+    <button type="button" class="tab-btn {% if loop.first %}active{% endif %}"
+            onclick="showDay('{{ day }}', this)">
+      {{ day | title }}
+    </button>
+    {% endfor %}
+  </div>
+
+  {% for day in days %}
+  <div id="panel-{{ day }}" class="day-panel" style="display:{% if loop.first %}block{% else %}none{% endif %};">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:1.25rem;">
+
+      {% for meal in meals %}
+      {% set key = day ~ '_' ~ meal %}
+      {% set row = menu[day][meal] %}
+      {% set def_start, def_end = times[meal] %}
+
+      <div class="card" style="border-top:3px solid {{ meal_colors[meal] }};">
+        <div class="card-header" style="padding:0.875rem 1.25rem;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:1.25rem;">{{ meal_icons[meal] }}</span>
+            <span style="font-weight:700; font-size:0.9rem;">{{ meal | title }}</span>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <input type="time" name="{{ key }}_start" value="{{ row.timing_start if row else def_start }}"
+                   class="form-control" style="width:90px; font-size:0.78rem; padding:0.25rem 0.4rem;">
+            <span style="font-size:0.75rem; color:var(--text-muted);">–</span>
+            <input type="time" name="{{ key }}_end" value="{{ row.timing_end if row else def_end }}"
+                   class="form-control" style="width:90px; font-size:0.78rem; padding:0.25rem 0.4rem;">
+          </div>
+        </div>
+        <div class="card-body" style="padding:1rem 1.25rem; display:flex; flex-direction:column; gap:0.75rem;">
+          <div>
+            <label class="form-label" style="font-size:0.75rem;">Menu Items
+              <span style="color:var(--text-muted); font-weight:400;">(comma-separated)</span>
+            </label>
+            <textarea name="{{ key }}_items" class="form-control"
+                      rows="3" placeholder="e.g. Idli, Sambar, Coconut Chutney, Tea"
+                      style="font-size:0.82rem; resize:vertical;">{{ row.menu_items if row else '' }}</textarea>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.75rem;">Special Diet Option
+              <span style="color:var(--text-muted); font-weight:400;">(optional)</span>
+            </label>
+            <input type="text" name="{{ key }}_special" class="form-control"
+                   placeholder="e.g. Jain, Diabetic-friendly…"
+                   value="{{ row.special_diet if row and row.special_diet else '' }}"
+                   style="font-size:0.82rem;">
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+    </div><!-- grid -->
+  </div><!-- panel -->
+  {% endfor %}
+
+  <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem; padding-bottom:2rem;">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline">Cancel</a>
+    <button type="submit" class="btn btn-primary btn-lg">
+      <i class="fas fa-save"></i> Save Full Menu
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showDay(day, btn) {
+  document.querySelectorAll('.day-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('#dayTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + day).style.display = 'block';
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

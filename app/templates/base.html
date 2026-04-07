@@ -61,6 +61,9 @@
           <a href="{{ url_for('student.roommate_matches') }}" class="{{ 'active' if request.endpoint == 'student.roommate_matches' }}">
             <span class="nav-icon"><i class="fas fa-users"></i></span> Find Roommates
           </a>
+          <a href="{{ url_for('student.room_preferences') }}" class="{{ 'active' if request.endpoint == 'student.room_preferences' }}">
+            <span class="nav-icon"><i class="fas fa-list-ol"></i></span> Room Preferences
+          </a>
         </nav>
       </div>
 
@@ -103,6 +106,9 @@
           </a>
           <a href="{{ url_for('admin.students') }}" class="{{ 'active' if request.endpoint == 'admin.students' }}">
             <span class="nav-icon"><i class="fas fa-user-graduate"></i></span> Students
+          </a>
+          <a href="{{ url_for('admin.allocation_queue') }}" class="{{ 'active' if request.endpoint == 'admin.allocation_queue' }}">
+            <span class="nav-icon"><i class="fas fa-sort-amount-down"></i></span> Allocation Queue
           </a>
           <a href="{{ url_for('admin.rooms') }}" class="{{ 'active' if request.endpoint == 'admin.rooms' }}">
             <span class="nav-icon"><i class="fas fa-door-open"></i></span> Rooms

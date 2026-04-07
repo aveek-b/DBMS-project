@@ -27,7 +27,10 @@ from ..models.database import (
     create_leave_request,
     execute_procedure,
     execute_dml,
-    mark_notification_read
+    mark_notification_read,
+    get_all_hostel_blocks,
+    get_student_room_preferences,
+    save_student_room_preferences,
 )
 
 from ..utils.helpers import student_required, get_day_of_week
@@ -419,6 +422,72 @@ def roommate_matches():
         matches=matches,
         student=student
     )
+
+@student_bp.route('/room-preferences', methods=['GET', 'POST'])
+@login_required
+@student_required
+def room_preferences():
+    """Student fills in up to 3 ranked block preferences."""
+    student = get_student_by_user_id(current_user.user_id)
+    if not student:
+        flash('Student profile not found.', 'danger')
+        return redirect(url_for('auth.logout'))
+
+    if student['hostel_status'] == 'ALLOCATED':
+        flash('You are already allocated to a room.', 'info')
+        return redirect(url_for('student.dashboard'))
+
+    blocks = get_all_hostel_blocks() or []
+    # Filter to blocks matching the student's gender
+    gender = student.get('gender')
+    eligible_blocks = [
+        b for b in blocks
+        if b['block_type'] == 'COED'
+        or (gender and b['block_type'] == gender)
+    ]
+
+    if request.method == 'POST':
+        ranked_ids = [
+            request.form.get('pref_1'),
+            request.form.get('pref_2'),
+            request.form.get('pref_3'),
+        ]
+        notes = [
+            request.form.get('note_1', '').strip(),
+            request.form.get('note_2', '').strip(),
+            request.form.get('note_3', '').strip(),
+        ]
+        # Drop empty / duplicate entries while preserving order
+        seen = set()
+        clean_ids, clean_notes = [], []
+        for bid, note in zip(ranked_ids, notes):
+            if bid and bid not in seen:
+                seen.add(bid)
+                clean_ids.append(bid)
+                clean_notes.append(note)
+
+        if not clean_ids:
+            flash('Please select at least one block preference.', 'warning')
+            return redirect(url_for('student.room_preferences'))
+
+        try:
+            save_student_room_preferences(student['student_id'], clean_ids, clean_notes)
+            flash('Room preferences saved successfully.', 'success')
+        except Exception as e:
+            flash(f'Error saving preferences: {e}', 'danger')
+        return redirect(url_for('student.room_preferences'))
+
+    existing = get_student_room_preferences(student['student_id']) or []
+    # Build a lookup by rank for the template
+    pref_map = {p['preference_rank']: p for p in existing}
+
+    return render_template(
+        'student/room_preferences.html',
+        student=student,
+        eligible_blocks=eligible_blocks,
+        pref_map=pref_map,
+    )
+
 
 @student_bp.route('/housekeeping')
 @login_required

@@ -165,6 +165,11 @@
         Select up to <strong>{{ max_roommates }}</strong> student{{ 's' if max_roommates != 1 }} to co-allocate to this room.
       </div>
 
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem;">
+        <i class="fas fa-sort-amount-down"></i>
+        Sorted by: <strong>CGPA</strong> &rsaquo; <strong>Block preference</strong> &rsaquo; <strong>Compatibility</strong>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -175,7 +180,8 @@
               <th>Student</th>
               <th>Roll No.</th>
               <th>Course / Branch</th>
-              <th>Year</th>
+              <th style="text-align:center;">CGPA</th>
+              <th style="text-align:center;">Pref.</th>
               <th style="text-align:center;">Quiz</th>
               <th style="text-align:center; min-width:160px;">Compatibility</th>
               <th style="text-align:center; min-width:80px;">Score</th>
@@ -206,7 +212,32 @@
               </td>
               <td><span style="font-family:var(--font-mono); font-size:0.8rem;">{{ c.roll_number }}</span></td>
               <td style="font-size:0.82rem;">{{ c.course }}<br><span style="color:var(--text-muted);">{{ c.branch }}</span></td>
-              <td style="text-align:center; font-size:0.82rem;">{{ c.year_of_study }}</td>
+
+              <!-- CGPA -->
+              <td style="text-align:center;">
+                {% if c.cgpa is not none %}
+                  {% if c.cgpa >= 8 %}{% set cgpa_cls = 'badge-success' %}
+                  {% elif c.cgpa >= 6 %}{% set cgpa_cls = 'badge-primary' %}
+                  {% else %}{% set cgpa_cls = 'badge-warning' %}{% endif %}
+                  <span class="badge {{ cgpa_cls }}" style="font-family:var(--font-display); font-size:0.8rem;">
+                    {{ '%.2f'|format(c.cgpa) }}
+                  </span>
+                {% else %}
+                  <span style="color:var(--text-muted);">—</span>
+                {% endif %}
+              </td>
+
+              <!-- Block preference rank -->
+              <td style="text-align:center;">
+                {% if c.min_pref_rank is not none %}
+                  <span class="badge badge-success" title="Listed this block as preference #{{ c.min_pref_rank }}">
+                    #{{ c.min_pref_rank }}
+                  </span>
+                {% else %}
+                  <span style="font-size:0.75rem; color:var(--text-muted);" title="Did not list this block">—</span>
+                {% endif %}
+              </td>
+
               <td style="text-align:center;">
                 {% if c.compatibility_completed == 'Y' %}
                 <span class="badge badge-success" title="Quiz completed"><i class="fas fa-check"></i></span>

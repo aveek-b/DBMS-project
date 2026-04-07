@@ -45,6 +45,22 @@
         <i class="fas fa-star" style="width:16px;"></i> {{ b.facilities }}
       </div>
       {% endif %}
+
+      <!-- CGPA Cutoff Editor -->
+      <div style="margin-top:0.875rem; padding-top:0.75rem; border-top:1px solid var(--border);">
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.4rem;">
+          <i class="fas fa-graduation-cap"></i> Min CGPA Cutoff
+          <span style="color:var(--text-muted);">(0 = open to all)</span>
+        </div>
+        <form method="POST" action="{{ url_for('admin.update_block_cutoff') }}"
+              style="display:flex; gap:0.5rem; align-items:center;">
+          <input type="hidden" name="block_id" value="{{ b.block_id }}">
+          <input type="number" name="cgpa_cutoff" step="0.01" min="0" max="10"
+                 value="{{ '%.2f'|format(b.cgpa_cutoff) if b.cgpa_cutoff else '0.00' }}"
+                 class="form-control" style="width:80px; font-size:0.82rem; padding:0.3rem 0.5rem;">
+          <button type="submit" class="btn btn-primary btn-sm">Set Cutoff</button>
+        </form>
+      </div>
     </div>
   </div>
   {% else %}
