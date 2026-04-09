@@ -33,7 +33,7 @@
           <th>Request #</th>
           <th>Service Type</th>
           <th>Description</th>
-          <th>Preferred Date</th>
+          <th>Date &amp; Slot</th>
           <th>Urgency</th>
           <th>Status</th>
           <th>Assigned To</th>
@@ -48,7 +48,10 @@
           <td style="max-width:180px;">
             <div style="font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ r.description or '—' }}</div>
           </td>
-          <td style="font-size:0.82rem;">{{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}</td>
+          <td style="font-size:0.82rem;">
+            {{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}
+            {% if r.preferred_time %}<div style="font-size:0.72rem; color:var(--text-muted);">{{ r.preferred_time }}</div>{% endif %}
+          </td>
           <td>
             <span class="badge badge-{{ 'danger' if r.urgency == 'URGENT' else 'warning' if r.urgency == 'HIGH' else 'info' if r.urgency == 'NORMAL' else 'muted' }}">
               {{ r.urgency | title }}
@@ -116,12 +119,22 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Preferred Date</label>
-            <input type="date" name="preferred_date" class="form-control">
+            <label class="form-label">Preferred Date <span style="color:var(--danger);">*</span></label>
+            <input type="date" name="preferred_date" class="form-control" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Preferred Time</label>
-            <input type="text" name="preferred_time" class="form-control" placeholder="e.g. 10:00 AM – 12:00 PM">
+            <label class="form-label">Preferred Time Slot (1 hour)</label>
+            <select name="preferred_time" class="form-control">
+              <option value="">Select a slot</option>
+              <option value="08:00-09:00">08:00 – 09:00</option>
+              <option value="09:00-10:00">09:00 – 10:00</option>
+              <option value="10:00-11:00">10:00 – 11:00</option>
+              <option value="11:00-12:00">11:00 – 12:00</option>
+              <option value="14:00-15:00">14:00 – 15:00</option>
+              <option value="15:00-16:00">15:00 – 16:00</option>
+              <option value="16:00-17:00">16:00 – 17:00</option>
+              <option value="17:00-18:00">17:00 – 18:00</option>
+            </select>
           </div>
         </div>
         <div class="form-group">

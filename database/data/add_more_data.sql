@@ -77,27 +77,27 @@ VALUES (seq_rooms.NEXTVAL, 'D-502', 4, 5, 'DOUBLE', 2, 0, 7000, 'Y', 'Y', 'AVAIL
 
 -- Male students (11-15)
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student011', 'dhruv.malhotra@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Dhruv', 'Malhotra', '9100000011', 'Y');
+VALUES (seq_users.NEXTVAL, 'student011', 'dhruv.malhotra@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Dhruv', 'Malhotra', '9100000011', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student012', 'rohan.kapoor@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Rohan', 'Kapoor', '9100000012', 'Y');
+VALUES (seq_users.NEXTVAL, 'student012', 'rohan.kapoor@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Rohan', 'Kapoor', '9100000012', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student013', 'siddharth.nair@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Siddharth', 'Nair', '9100000013', 'Y');
+VALUES (seq_users.NEXTVAL, 'student013', 'siddharth.nair@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Siddharth', 'Nair', '9100000013', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student014', 'aditya.rao@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Aditya', 'Rao', '9100000014', 'Y');
+VALUES (seq_users.NEXTVAL, 'student014', 'aditya.rao@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Aditya', 'Rao', '9100000014', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student015', 'nikhil.desai@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Nikhil', 'Desai', '9100000015', 'Y');
+VALUES (seq_users.NEXTVAL, 'student015', 'nikhil.desai@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Nikhil', 'Desai', '9100000015', 'Y');
 
 -- Female students (16-20)
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student016', 'divya.krishnan@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Divya', 'Krishnan', '9100000016', 'Y');
+VALUES (seq_users.NEXTVAL, 'student016', 'divya.krishnan@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Divya', 'Krishnan', '9100000016', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student017', 'nisha.agarwal@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Nisha', 'Agarwal', '9100000017', 'Y');
+VALUES (seq_users.NEXTVAL, 'student017', 'nisha.agarwal@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Nisha', 'Agarwal', '9100000017', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student018', 'pooja.iyer@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Pooja', 'Iyer', '9100000018', 'Y');
+VALUES (seq_users.NEXTVAL, 'student018', 'pooja.iyer@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Pooja', 'Iyer', '9100000018', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student019', 'ritika.bose@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Ritika', 'Bose', '9100000019', 'Y');
+VALUES (seq_users.NEXTVAL, 'student019', 'ritika.bose@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Ritika', 'Bose', '9100000019', 'Y');
 INSERT INTO users (user_id, username, email, password_hash, role, first_name, last_name, phone_number, is_active)
-VALUES (seq_users.NEXTVAL, 'student020', 'simran.kaur@student.edu', 'pbkdf2:sha256:260000$password123hash', 'STUDENT', 'Simran', 'Kaur', '9100000020', 'Y');
+VALUES (seq_users.NEXTVAL, 'student020', 'simran.kaur@student.edu', 'scrypt:32768:8:1$tOzPlGSwNKLtX245$69e5a5a1be7914df47ddc812256254682b4b9ed61fcdb05e3d3a5675c232c6b7feb8d4f20f2d01df318f363776e1e599e9d50068660515327bcc32344a19082a', 'STUDENT', 'Simran', 'Kaur', '9100000020', 'Y');
 
 -- ============================================
 -- ADDITIONAL STUDENT PROFILES

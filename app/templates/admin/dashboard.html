@@ -91,108 +91,39 @@
   </div>
 </div>
 
-<div class="grid-2">
-
-  <!-- Complaint Statistics -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title"><i class="fas fa-chart-pie" style="color:var(--accent); margin-right:0.5rem;"></i>Complaints by Category</span>
-      <a href="{{ url_for('admin.complaints') }}" class="btn btn-outline btn-sm">View All</a>
-    </div>
-    <div class="table-wrap">
-      {% if complaint_stats %}
-      <table>
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Total</th>
-            <th>Resolved</th>
-            <th>Pending</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for s in complaint_stats %}
-          <tr>
-            <td style="font-weight:500;">{{ s.category_name or 'Uncategorised' }}</td>
-            <td><span class="badge badge-muted">{{ s.total }}</span></td>
-            <td><span class="badge badge-success">{{ s.resolved }}</span></td>
-            <td><span class="badge badge-{{ 'danger' if s.pending > 0 else 'muted' }}">{{ s.pending }}</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div class="empty-state">
-        <div class="empty-state-icon"><i class="fas fa-check-circle"></i></div>
-        <h3>No Complaints</h3>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Quick Admin Actions -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title"><i class="fas fa-bolt" style="color:var(--accent); margin-right:0.5rem;"></i>Quick Actions</span>
-    </div>
-    <div class="card-body">
-      <div style="display:flex; flex-direction:column; gap:0.6rem;">
-        <a href="{{ url_for('admin.students') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
-          <i class="fas fa-user-graduate" style="color:var(--primary); width:20px;"></i>
-          Manage Students
-        </a>
-        <a href="{{ url_for('admin.rooms') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
-          <i class="fas fa-door-open" style="color:var(--accent-dark); width:20px;"></i>
-          Room Allocation
-        </a>
-        <a href="{{ url_for('admin.wardens') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
-          <i class="fas fa-user-shield" style="color:var(--success); width:20px;"></i>
-          Manage Wardens
-        </a>
-        <a href="{{ url_for('admin.announcements') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
-          <i class="fas fa-bullhorn" style="color:var(--warning); width:20px;"></i>
-          Post Announcement
-        </a>
-        <a href="{{ url_for('admin.mess_menu') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
-          <i class="fas fa-utensils" style="color:var(--info); width:20px;"></i>
-          Update Mess Menu
-        </a>
-        <a href="{{ url_for('admin.analytics') }}" class="btn btn-primary" style="justify-content:flex-start; gap:1rem;">
-          <i class="fas fa-chart-bar" style="width:20px;"></i>
-          View Full Analytics
-        </a>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<!-- Monthly Summary Strip -->
-{% if monthly %}
-<div class="card mt-3">
+<!-- Quick Admin Actions -->
+<div class="card">
   <div class="card-header">
-    <span class="card-title"><i class="fas fa-calendar-alt" style="color:var(--accent); margin-right:0.5rem;"></i>This Month at a Glance</span>
+    <span class="card-title"><i class="fas fa-bolt" style="color:var(--accent); margin-right:0.5rem;"></i>Quick Actions</span>
   </div>
   <div class="card-body">
-    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:1rem;">
-      {% set items = [
-        ('Complaints Filed', monthly.complaints_this_month, 'fas fa-exclamation-circle', 'warning'),
-        ('Complaints Resolved', monthly.complaints_resolved_this_month, 'fas fa-check-circle', 'success'),
-        ('Leave Requests', monthly.leave_requests_this_month, 'fas fa-calendar-check', 'info'),
-        ('Leaves Approved', monthly.leaves_approved_this_month, 'fas fa-thumbs-up', 'success'),
-        ('HK Requests', monthly.housekeeping_requests_this_month, 'fas fa-broom', 'primary'),
-        ('Visitors', monthly.visitors_this_month, 'fas fa-user-friends', 'muted'),
-      ] %}
-      {% for label, val, icon, color in items %}
-      <div style="text-align:center; padding:0.75rem; background:var(--bg); border-radius:var(--radius-sm);">
-        <i class="{{ icon }}" style="font-size:1.3rem; color:var(--{{ color }}); opacity:0.7; display:block; margin-bottom:0.4rem;"></i>
-        <div style="font-family:var(--font-display); font-size:1.4rem; font-weight:700; color:var(--text);">{{ val or 0 }}</div>
-        <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">{{ label }}</div>
-      </div>
-      {% endfor %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.6rem;">
+      <a href="{{ url_for('admin.students') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
+        <i class="fas fa-user-graduate" style="color:var(--primary); width:20px;"></i>
+        Manage Students
+      </a>
+      <a href="{{ url_for('admin.rooms') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
+        <i class="fas fa-door-open" style="color:var(--accent-dark); width:20px;"></i>
+        Room Allocation
+      </a>
+      <a href="{{ url_for('admin.wardens') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
+        <i class="fas fa-user-shield" style="color:var(--success); width:20px;"></i>
+        Manage Wardens
+      </a>
+      <a href="{{ url_for('admin.announcements') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
+        <i class="fas fa-bullhorn" style="color:var(--warning); width:20px;"></i>
+        Post Announcement
+      </a>
+      <a href="{{ url_for('admin.mess_menu') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
+        <i class="fas fa-utensils" style="color:var(--info); width:20px;"></i>
+        Update Mess Menu
+      </a>
+      <a href="{{ url_for('admin.complaints') }}" class="btn btn-outline" style="justify-content:flex-start; gap:1rem;">
+        <i class="fas fa-exclamation-circle" style="color:var(--danger); width:20px;"></i>
+        Complaints Analytics
+      </a>
     </div>
   </div>
 </div>
-{% endif %}
 
 {% endblock %}

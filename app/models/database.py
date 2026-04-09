@@ -964,11 +964,13 @@ def get_block_leave_requests(block_id, status=None):
 def get_block_housekeeping_requests(block_id, status=None):
     """Get housekeeping requests from a block."""
     query = """
-        SELECT hr.*, s.roll_number, u.first_name, u.last_name, r.room_number
+        SELECT hr.*, s.roll_number, u.first_name, u.last_name, r.room_number,
+               st.first_name || ' ' || NVL(st.last_name, '') AS staff_name
         FROM housekeeping_requests hr
         JOIN students s ON hr.student_id = s.student_id
         JOIN users u ON s.user_id = u.user_id
         JOIN rooms r ON hr.room_id = r.room_id
+        LEFT JOIN staff st ON hr.assigned_staff_id = st.staff_id
         WHERE r.block_id = :block_id
     """
     params = {'block_id': block_id}

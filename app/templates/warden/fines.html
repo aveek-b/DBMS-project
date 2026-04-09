@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Fines — HMS Portal{% endblock %}
+{% block page_title %}Fines{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-row">
+    <div>
+      <h1>Fines Management</h1>
+      <p>Impose and track fines for students in your block.</p>
+    </div>
+    <button class="btn btn-primary" onclick="document.getElementById('imposeFineModal').classList.add('active')">
+      <i class="fas fa-plus"></i> Impose Fine
+    </button>
+  </div>
+</div>
+
+<!-- Analytics -->
+{% if analytics %}
+<div class="card mb-3">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-chart-bar" style="color:var(--accent); margin-right:0.5rem;"></i>Fine Analytics</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Fine Type</th>
+          <th>Total</th>
+          <th>Total Amount</th>
+          <th>Paid</th>
+          <th>Pending</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in analytics %}
+        <tr>
+          <td style="font-weight:500;">{{ a.fine_type | replace('_',' ') | title }}</td>
+          <td><span class="badge badge-muted">{{ a.total }}</span></td>
+          <td style="font-size:0.85rem;">₹{{ "%.2f"|format(a.total_amount or 0) }}</td>
+          <td><span class="badge badge-success">{{ a.paid_count }}</span></td>
+          <td><span class="badge badge-{{ 'danger' if a.pending_count > 0 else 'muted' }}">{{ a.pending_count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Filter tabs -->
+<div class="tabs">
+  <a href="{{ url_for('warden.fines') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('warden.fines', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('warden.fines', status='PAID') }}" class="tab-btn {{ 'active' if current_status == 'PAID' }}">Paid</a>
+  <a href="{{ url_for('warden.fines', status='OVERDUE') }}" class="tab-btn {{ 'active' if current_status == 'OVERDUE' }}">Overdue</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if fines %}
+    <table>
+      <thead>
+        <tr>
+          <th>Fine #</th>
+          <th>Student</th>
+          <th>Room</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Balance</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Imposed By</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fines %}
+        <tr>
+          <td><span class="text-mono" style="font-size:0.78rem;">{{ f.fine_number }}</span></td>
+          <td>
+            <div style="font-weight:500; font-size:0.875rem;">{{ f.student_name }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">{{ f.roll_number }}</div>
+          </td>
+          <td><span class="badge badge-muted">{{ f.room_number or '—' }}</span></td>
+          <td style="font-size:0.82rem;">{{ f.fine_type | replace('_',' ') | title }}</td>
+          <td style="font-size:0.85rem; font-weight:600;">₹{{ "%.2f"|format(f.amount) }}</td>
+          <td style="font-size:0.85rem; color:{{ 'var(--danger)' if f.balance > 0 else 'var(--success)' }};">
+            ₹{{ "%.2f"|format(f.balance or 0) }}
+          </td>
+          <td style="font-size:0.78rem; color:var(--text-muted);">
+            {{ f.due_date.strftime('%d %b %Y') if f.due_date else '—' }}
+          </td>
+          <td>
+            <span class="badge badge-{{ 'warning' if f.status == 'PENDING' else 'success' if f.status == 'PAID' else 'danger' if f.status == 'OVERDUE' else 'muted' }}">
+              {{ f.status | replace('_',' ') | title }}
+            </span>
+          </td>
+          <td style="font-size:0.78rem; color:var(--text-muted);">{{ f.imposed_by_name or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-receipt"></i></div>
+      <h3>No Fines Found</h3>
+      {% if current_status %}<p>No {{ current_status | lower }} fines in your block.</p>{% else %}<p>No fines have been imposed in your block.</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Impose Fine Modal -->
+<div class="modal-overlay" id="imposeFineModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <span class="modal-title">Impose Fine</span>
+      <button class="modal-close" onclick="document.getElementById('imposeFineModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('warden.impose_fine') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Student <span style="color:var(--danger);">*</span></label>
+          <select name="student_id" class="form-control" required>
+            <option value="">Select student...</option>
+            {% for s in block_students %}
+            <option value="{{ s.student_id }}">{{ s.full_name }} ({{ s.roll_number }}) — Room {{ s.room_number }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fine Type <span style="color:var(--danger);">*</span></label>
+            <select name="fine_type" class="form-control" required>
+              <option value="">Select type...</option>
+              <option value="NOT_DONE_BIOMETRIC">Not Done Biometric</option>
+              <option value="BEHAVIOURAL_CONDUCT">Unsuitable Behavioural Conduct</option>
+              <option value="SUBSTANCE_CONSUMPTION">Consumption of Substance</option>
+              <option value="INQUIRY">Inquiry</option>
+              <option value="LATE_ENTRY">Late Entry</option>
+              <option value="DAMAGE">Property Damage</option>
+              <option value="RULE_VIOLATION">Rule Violation</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount (₹) <span style="color:var(--danger);">*</span></label>
+            <input type="number" name="amount" class="form-control" min="1" step="0.01"
+              placeholder="Enter fine amount" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Due in (days)</label>
+            <input type="number" name="due_days" class="form-control" value="30" min="1" max="365">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Reason</label>
+          <textarea name="description" class="form-control" rows="3"
+            placeholder="Describe the reason for imposing this fine..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('imposeFineModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-danger"><i class="fas fa-gavel"></i> Impose Fine</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+</script>
+{% endblock %}

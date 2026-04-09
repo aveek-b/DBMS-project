@@ -59,7 +59,14 @@
             </span>
             {% if lr.late_return == 'Y' %}<span class="badge badge-danger" style="margin-left:0.25rem;">Late Return</span>{% endif %}
           </td>
-          <td style="font-size:0.8rem; color:var(--text-muted);">{{ lr.approved_by_name or '—' }}</td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">
+            {{ lr.approved_by_name or '—' }}
+            {% if lr.rejection_reason %}
+            <div style="font-size:0.72rem; color:var(--danger); margin-top:0.2rem;" title="{{ lr.rejection_reason }}">
+              <i class="fas fa-times-circle"></i> {{ lr.rejection_reason | truncate(60) }}
+            </div>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

@@ -44,14 +44,12 @@ def dashboard():
     """Admin dashboard with system-wide statistics."""
     occupancy = get_occupancy_stats()
     monthly = get_monthly_stats()
-    complaint_stats = get_complaint_statistics()
     blocks = get_all_hostel_blocks()
 
     return render_template(
         'admin/dashboard.html',
         occupancy=occupancy,
         monthly=monthly,
-        complaint_stats=complaint_stats,
         blocks=blocks
     )
 
@@ -195,7 +193,7 @@ def students():
 @admin_required
 def rooms():
     """View all rooms in the system."""
-    block_filter = request.args.get('block')
+    block_filter = request.args.get('block_id') or request.args.get('block')
     status_filter = request.args.get('status')
 
     rooms_list = get_all_rooms(
@@ -243,7 +241,7 @@ def wardens():
 @admin_required
 def staff():
     """View all staff members."""
-    type_filter = request.args.get('type')
+    type_filter = request.args.get('staff_type') or request.args.get('type')
 
     staff_list = get_all_staff(staff_type=type_filter)
 
@@ -257,10 +255,50 @@ def staff():
 @login_required
 @admin_required
 def complaints():
-    """View all complaints in the system."""
-    # For now, redirect to dashboard or create a simple view
-    flash('Complaints management coming soon.', 'info')
-    return redirect(url_for('admin.dashboard'))
+    """View complaint analytics - blockwise stats and status breakdown."""
+    from ..models.database import execute_query
+
+    # Blockwise complaint analytics
+    blockwise = execute_query("""
+        SELECT hb.block_name, hb.block_type,
+               COUNT(c.complaint_id) AS total,
+               SUM(CASE WHEN c.status = 'PENDING' THEN 1 ELSE 0 END) AS pending,
+               SUM(CASE WHEN c.status IN ('ASSIGNED','IN_PROGRESS') THEN 1 ELSE 0 END) AS in_progress,
+               SUM(CASE WHEN c.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolved,
+               SUM(CASE WHEN c.status = 'CLOSED' THEN 1 ELSE 0 END) AS closed
+        FROM hostel_blocks hb
+        LEFT JOIN rooms r ON r.block_id = hb.block_id
+        LEFT JOIN complaints c ON c.room_id = r.room_id
+        GROUP BY hb.block_id, hb.block_name, hb.block_type
+        ORDER BY hb.block_name
+    """)
+
+    # Category-wise stats
+    category_stats = get_complaint_statistics(days=90)
+
+    # Recent complaints (last 30 days)
+    recent = execute_query("""
+        SELECT c.complaint_number, c.subject, c.status, c.priority,
+               c.created_at, cc.category_name,
+               hb.block_name, r.room_number,
+               u.first_name || ' ' || NVL(u.last_name,'') AS student_name
+        FROM complaints c
+        JOIN students s ON c.student_id = s.student_id
+        JOIN users u ON s.user_id = u.user_id
+        LEFT JOIN rooms r ON c.room_id = r.room_id
+        LEFT JOIN hostel_blocks hb ON r.block_id = hb.block_id
+        LEFT JOIN complaint_categories cc ON c.category_id = cc.category_id
+        WHERE c.created_at >= SYSDATE - 30
+        ORDER BY c.created_at DESC
+        FETCH FIRST 50 ROWS ONLY
+    """)
+
+    return render_template(
+        'admin/complaints.html',
+        blockwise=blockwise,
+        category_stats=category_stats,
+        recent=recent,
+    )
 
 
 @admin_bp.route('/mess-menu', methods=['GET', 'POST'])

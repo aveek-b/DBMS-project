@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Complaints Analytics — HMS Portal{% endblock %}
+{% block page_title %}Complaints{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Complaints Analytics</h1>
+  <p>System-wide complaint overview by block and category. No actions can be taken from this view.</p>
+</div>
+
+<!-- Blockwise Summary -->
+<div class="card mb-3">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-building" style="color:var(--accent); margin-right:0.5rem;"></i>Blockwise Complaint Summary</span>
+  </div>
+  <div class="table-wrap">
+    {% if blockwise %}
+    <table>
+      <thead>
+        <tr>
+          <th>Block</th>
+          <th>Type</th>
+          <th style="text-align:center;">Total</th>
+          <th style="text-align:center;">Pending</th>
+          <th style="text-align:center;">In Progress</th>
+          <th style="text-align:center;">Resolved</th>
+          <th style="text-align:center;">Closed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in blockwise %}
+        <tr>
+          <td style="font-weight:600;">{{ b.block_name }}</td>
+          <td>
+            <span class="badge badge-{{ 'primary' if b.block_type == 'MALE' else 'accent' if b.block_type == 'FEMALE' else 'muted' }}">
+              {{ b.block_type | title }}
+            </span>
+          </td>
+          <td style="text-align:center;"><span class="badge badge-muted">{{ b.total or 0 }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-{{ 'danger' if b.pending > 0 else 'muted' }}">{{ b.pending or 0 }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-info">{{ b.in_progress or 0 }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-success">{{ b.resolved or 0 }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-muted">{{ b.closed or 0 }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state"><h3>No data available</h3></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Category Stats -->
+{% if category_stats %}
+<div class="card mb-3">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-chart-pie" style="color:var(--accent); margin-right:0.5rem;"></i>By Category (Last 90 Days)</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th style="text-align:center;">Total</th>
+          <th style="text-align:center;">Resolved</th>
+          <th style="text-align:center;">Pending</th>
+          <th>Resolution Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in category_stats %}
+        {% set rate = (s.resolved / s.total * 100) if s.total > 0 else 0 %}
+        <tr>
+          <td style="font-weight:500;">{{ s.category_name or 'Uncategorised' }}</td>
+          <td style="text-align:center;"><span class="badge badge-muted">{{ s.total }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-success">{{ s.resolved }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-{{ 'danger' if s.pending > 0 else 'muted' }}">{{ s.pending }}</span></td>
+          <td>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <div class="occ-bar" style="flex:1; max-width:120px;">
+                <div class="occ-fill {{ 'high' if rate < 50 else '' }}" style="width:{{ rate }}%;"></div>
+              </div>
+              <span style="font-size:0.8rem; font-weight:600; color:{{ 'var(--success)' if rate >= 80 else 'var(--warning)' if rate >= 50 else 'var(--danger)' }};">
+                {{ "%.0f"|format(rate) }}%
+              </span>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Recent Complaints -->
+{% if recent %}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-clock" style="color:var(--accent); margin-right:0.5rem;"></i>Recent Complaints (Last 30 Days)</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Complaint #</th>
+          <th>Student</th>
+          <th>Block</th>
+          <th>Room</th>
+          <th>Category</th>
+          <th>Subject</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Filed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in recent %}
+        <tr>
+          <td><span class="text-mono" style="font-size:0.78rem;">{{ c.complaint_number }}</span></td>
+          <td style="font-size:0.85rem;">{{ c.student_name }}</td>
+          <td style="font-size:0.82rem;">{{ c.block_name or '—' }}</td>
+          <td><span class="badge badge-muted">{{ c.room_number or '—' }}</span></td>
+          <td style="font-size:0.78rem;">{{ c.category_name or '—' }}</td>
+          <td style="font-size:0.82rem; max-width:160px;">
+            <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ c.subject }}">{{ c.subject }}</div>
+          </td>
+          <td>
+            <span class="badge badge-{{ 'danger' if c.priority == 'CRITICAL' else 'warning' if c.priority == 'HIGH' else 'info' if c.priority == 'MEDIUM' else 'muted' }}">
+              {{ c.priority | title }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-{{ 'warning' if c.status == 'PENDING' else 'info' if c.status in ['ASSIGNED','IN_PROGRESS'] else 'success' if c.status in ['RESOLVED','CLOSED'] else 'muted' }}">
+              {{ c.status | replace('_',' ') | title }}
+            </span>
+          </td>
+          <td style="font-size:0.78rem; color:var(--text-muted);">
+            {{ c.created_at.strftime('%d %b') if c.created_at else '—' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

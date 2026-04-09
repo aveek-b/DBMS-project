@@ -8,6 +8,29 @@
   <p>Manage housekeeping and maintenance requests for your block.</p>
 </div>
 
+{% if analytics %}
+<div class="card mb-3">
+  <div class="card-header">
+    <span class="card-title"><i class="fas fa-chart-bar" style="color:var(--accent); margin-right:0.5rem;"></i>Housekeeping Analytics</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Service Type</th><th style="text-align:center;">Total</th><th style="text-align:center;">Completed</th><th style="text-align:center;">Pending</th></tr></thead>
+      <tbody>
+        {% for a in analytics %}
+        <tr>
+          <td style="font-weight:500;">{{ a.service_type | replace('_',' ') | title }}</td>
+          <td style="text-align:center;"><span class="badge badge-muted">{{ a.total }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-success">{{ a.completed }}</span></td>
+          <td style="text-align:center;"><span class="badge badge-{{ 'warning' if a.pending > 0 else 'muted' }}">{{ a.pending }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="tabs">
   <a href="{{ url_for('warden.housekeeping') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
   <a href="{{ url_for('warden.housekeeping', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
@@ -17,7 +40,7 @@
 
 <div class="card">
   <div class="table-wrap">
-    {% if requests %}
+    {% if housekeeping_requests %}
     <table>
       <thead>
         <tr>
@@ -25,14 +48,14 @@
           <th>Student</th>
           <th>Room</th>
           <th>Service</th>
-          <th>Preferred Date</th>
+          <th>Date &amp; Slot</th>
           <th>Urgency</th>
           <th>Staff</th>
           <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        {% for r in requests %}
+        {% for r in housekeeping_requests %}
         <tr>
           <td><span class="text-mono" style="font-size:0.78rem;">{{ r.request_number }}</span></td>
           <td>
@@ -41,7 +64,10 @@
           </td>
           <td><span class="badge badge-muted">{{ r.room_number or '—' }}</span></td>
           <td><span class="badge badge-primary">{{ r.service_type | replace('_',' ') | title }}</span></td>
-          <td style="font-size:0.82rem;">{{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}</td>
+          <td style="font-size:0.82rem;">
+            {{ r.preferred_date.strftime('%d %b %Y') if r.preferred_date else '—' }}
+            {% if r.preferred_time %}<div style="font-size:0.72rem; color:var(--text-muted);">{{ r.preferred_time }}</div>{% endif %}
+          </td>
           <td>
             <span class="badge badge-{{ 'danger' if r.urgency == 'URGENT' else 'warning' if r.urgency == 'HIGH' else 'info' if r.urgency == 'NORMAL' else 'muted' }}">
               {{ r.urgency | title }}

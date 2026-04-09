@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Leave Requests — HMS Portal{% endblock %}
+{% block page_title %}Leave Requests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Leave Requests</h1>
+  <p>Review and process leave requests from your block's students.</p>
+</div>
+
+<div class="tabs">
+  <a href="{{ url_for('warden.leave_requests') }}" class="tab-btn {{ 'active' if not current_status }}">All</a>
+  <a href="{{ url_for('warden.leave_requests', status='PENDING') }}" class="tab-btn {{ 'active' if current_status == 'PENDING' }}">Pending</a>
+  <a href="{{ url_for('warden.leave_requests', status='APPROVED') }}" class="tab-btn {{ 'active' if current_status == 'APPROVED' }}">Approved</a>
+  <a href="{{ url_for('warden.leave_requests', status='REJECTED') }}" class="tab-btn {{ 'active' if current_status == 'REJECTED' }}">Rejected</a>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    {% if leave_requests %}
+    <table>
+      <thead>
+        <tr>
+          <th>Leave #</th>
+          <th>Student</th>
+          <th>Room</th>
+          <th>Type</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Reason</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lr in leave_requests %}
+        <tr>
+          <td><span class="text-mono" style="font-size:0.78rem;">{{ lr.leave_number }}</span></td>
+          <td>
+            <div style="font-weight:500; font-size:0.875rem;">{{ lr.first_name }} {{ lr.last_name }}</div>
+            <div style="font-size:0.72rem; color:var(--text-muted);">{{ lr.roll_number }}</div>
+          </td>
+          <td><span class="badge badge-muted">{{ lr.room_number or '—' }}</span></td>
+          <td><span class="badge badge-primary">{{ lr.leave_type | replace('_',' ') | title }}</span></td>
+          <td style="font-size:0.82rem;">{{ lr.from_date.strftime('%d %b %Y') if lr.from_date else '—' }}</td>
+          <td style="font-size:0.82rem;">{{ lr.to_date.strftime('%d %b %Y') if lr.to_date else '—' }}</td>
+          <td style="font-size:0.82rem; max-width:180px;">
+            <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="{{ lr.reason }}">{{ lr.reason }}</div>
+            {% if lr.rejection_reason %}
+            <div style="font-size:0.72rem; color:var(--danger); margin-top:0.2rem;">Rejected: {{ lr.rejection_reason }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge badge-{{ 'warning' if lr.status == 'PENDING' else 'success' if lr.status == 'APPROVED' else 'danger' if lr.status == 'REJECTED' else 'muted' }}">
+              {{ lr.status | title }}
+            </span>
+          </td>
+          <td>
+            {% if lr.status == 'PENDING' %}
+            <div style="display:flex; gap:0.4rem;">
+              <form method="POST" action="{{ url_for('warden.process_leave', leave_id=lr.leave_id) }}" style="display:inline;">
+                <input type="hidden" name="action" value="APPROVE">
+                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Approve this leave request?')">
+                  <i class="fas fa-check"></i> Approve
+                </button>
+              </form>
+              <button class="btn btn-danger btn-sm" onclick="openRejectModal({{ lr.leave_id }})">
+                <i class="fas fa-times"></i> Reject
+              </button>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon"><i class="fas fa-calendar-check"></i></div>
+      <h3>No Leave Requests</h3>
+      {% if current_status %}<p>No {{ current_status | lower }} leave requests.</p>{% else %}<p>No leave requests from your block.</p>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <span class="modal-title">Reject Leave Request</span>
+      <button class="modal-close" onclick="closeModal('rejectModal')">✕</button>
+    </div>
+    <form method="POST" id="rejectForm">
+      <input type="hidden" name="action" value="REJECT">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Reason for Rejection <span style="color:var(--danger);">*</span></label>
+          <textarea name="rejection_reason" class="form-control" rows="3"
+            placeholder="Please provide a reason for rejecting this leave..." required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('rejectModal')">Cancel</button>
+        <button type="submit" class="btn btn-danger">Reject Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openRejectModal(leaveId) {
+  document.getElementById('rejectForm').action = `/warden/leave/${leaveId}/process`;
+  document.getElementById('rejectModal').classList.add('active');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+</script>
+{% endblock %}

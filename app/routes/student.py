@@ -90,15 +90,26 @@ def profile():
     return render_template('student/profile.html', student=student)
 
 
+def _require_room(student):
+    """Return a redirect response if the student has no allocated room, else None."""
+    if not student or student.get('hostel_status') != 'ALLOCATED':
+        flash('Please wait for room allotment to access this feature.', 'info')
+        return redirect(url_for('student.dashboard'))
+    return None
+
+
 @student_bp.route('/room')
 @login_required
 @student_required
 def room_details():
     """Room details and roommate information."""
     student = get_student_by_user_id(current_user.user_id)
+    blocked = _require_room(student)
+    if blocked:
+        return blocked
     roommates = []
 
-    if student and student.get('room_id'):
+    if student.get('room_id'):
         occupants = get_room_occupants(student['room_id'])
         roommates = [
             o for o in occupants
@@ -118,6 +129,10 @@ def room_details():
 def complaints():
     """View and manage complaints."""
     student = get_student_by_user_id(current_user.user_id)
+    blocked = _require_room(student)
+    if blocked:
+        return blocked
+
     status_filter = request.args.get('status')
 
     complaints_list = get_student_complaints(
@@ -141,6 +156,9 @@ def complaints():
 def new_complaint():
     """Submit a new complaint."""
     student = get_student_by_user_id(current_user.user_id)
+    blocked = _require_room(student)
+    if blocked:
+        return blocked
 
     category_id = request.form.get('category_id', type=int)
     subject = request.form.get('subject', '').strip()
@@ -187,6 +205,10 @@ def new_complaint():
 def fines():
     """View fines and payments."""
     student = get_student_by_user_id(current_user.user_id)
+    blocked = _require_room(student)
+    if blocked:
+        return blocked
+
     status_filter = request.args.get('status')
 
     fines_list = get_student_fines(
@@ -203,13 +225,16 @@ def fines():
 @student_bp.route('/leave-requests', methods=['GET', 'POST'])
 @login_required
 @student_required
-
 def leave_requests():
     student = get_student_by_user_id(current_user.user_id)
 
     if not student:
         flash('Student profile not found.', 'danger')
         return redirect(url_for('auth.logout'))
+
+    blocked = _require_room(student)
+    if blocked:
+        return blocked
 
     if request.method == 'POST':
         leave_type = request.form.get('leave_type')
@@ -489,11 +514,56 @@ def room_preferences():
     )
 
 
-@student_bp.route('/housekeeping')
+@student_bp.route('/housekeeping', methods=['GET', 'POST'])
 @login_required
 @student_required
 def housekeeping():
     student = get_student_by_user_id(current_user.user_id)
+    blocked = _require_room(student)
+    if blocked:
+        return blocked
+
+    if request.method == 'POST':
+        service_type = request.form.get('service_type', '').strip()
+        description = request.form.get('description', '').strip()
+        preferred_date = request.form.get('preferred_date', '').strip()
+        preferred_time = request.form.get('preferred_time', '').strip()
+        urgency = request.form.get('urgency', 'NORMAL').strip()
+
+        if not service_type:
+            flash('Please select a service type.', 'danger')
+            return redirect(url_for('student.housekeeping'))
+
+        try:
+            from datetime import datetime as dt
+            pref_date_obj = None
+            if preferred_date:
+                try:
+                    pref_date_obj = dt.strptime(preferred_date, '%Y-%m-%d').date()
+                except ValueError:
+                    pass
+
+            result = execute_procedure('proc_book_housekeeping', [
+                {'name': 'p_student_id', 'value': student['student_id']},
+                {'name': 'p_service_type', 'value': service_type},
+                {'name': 'p_description', 'value': description or None},
+                {'name': 'p_preferred_date', 'value': pref_date_obj},
+                {'name': 'p_preferred_time', 'value': preferred_time or None},
+                {'name': 'p_urgency', 'value': urgency},
+                {'name': 'p_request_id', 'direction': 'OUT', 'type': 'NUMBER'},
+                {'name': 'p_request_num', 'direction': 'OUT', 'type': 'STRING'},
+                {'name': 'p_result', 'direction': 'OUT', 'type': 'STRING'},
+                {'name': 'p_message', 'direction': 'OUT', 'type': 'STRING'}
+            ])
+            if result.get('p_result') == 'SUCCESS':
+                flash(f"Request {result.get('p_request_num')} submitted successfully!", 'success')
+            else:
+                flash(result.get('p_message', 'Failed to submit request.'), 'danger')
+        except Exception as e:
+            flash(f'Error: {str(e)}', 'danger')
+
+        return redirect(url_for('student.housekeeping'))
+
     status_filter = request.args.get('status')
 
     requests_list = get_student_housekeeping_requests(
@@ -503,6 +573,7 @@ def housekeeping():
 
     return render_template(
         'student/housekeeping.html',
+        student=student,
         requests=requests_list,
         current_status=status_filter
     )

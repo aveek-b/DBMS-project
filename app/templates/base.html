@@ -94,6 +94,9 @@
           <a href="{{ url_for('warden.housekeeping') }}" class="{{ 'active' if request.endpoint == 'warden.housekeeping' }}">
             <span class="nav-icon"><i class="fas fa-broom"></i></span> Housekeeping
           </a>
+          <a href="{{ url_for('warden.fines') }}" class="{{ 'active' if request.endpoint in ['warden.fines', 'warden.impose_fine'] }}">
+            <span class="nav-icon"><i class="fas fa-gavel"></i></span> Fines
+          </a>
         </nav>
       </div>
 
